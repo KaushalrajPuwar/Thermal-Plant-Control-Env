@@ -1,0 +1,13 @@
+[project]
+name = "thermal-plant-control-env"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "huggingface-hub>=1.9.0",
+    "openai>=2.30.0",
+    "openenv-core>=0.2.3",
+    "torch>=2.11.0",
+    "transformers>=5.5.0",
+]

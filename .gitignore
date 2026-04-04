@@ -1,0 +1,18 @@
+# Virtual Environments
+.venv/
+
+# Large Files / Archives
+context.zip
+
+# Python Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment Variables (Best practice to include now, just in case)
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
