@@ -155,30 +155,28 @@ If system breaks:
 
 ## INITIAL TEMPLATE
 
-CURRENT PHASE: SETUP
+CURRENT PHASE: NOT_STARTED
 
 CURRENT TASK:
 None
 
 LAST COMPLETED:
-Expanded scaffold with deployment/config placeholders, API/template components, registries, and testing skeleton
+None
 
 NEXT STEPS:
-- Start implementing environment state and transition logic in env/state.py and env/transitions.py
-- Implement OpenEnv interface in env/core.py and env/interface.py
-- Implement parser and strict logging utilities for inference loop
+- Initialize repo structure
 
 BLOCKERS:
 NONE
 
 FILES MODIFIED:
-inference.py, openenv.yaml, Dockerfile, app.py, requirements.txt, .env, .env.example, .dockerignore, env/*, tasks/*, graders/*, utils/*, scripts/*, tests/*
+None
 
 ARCHITECTURE COMPLIANCE CHECK:
-- [x] follows architecture.txt
+- [ ] follows architecture.txt
 - [ ] no new components added
-- [x] no duplication introduced
-- [x] parsing logic unchanged
+- [ ] no duplication introduced
+- [ ] parsing logic unchanged
 
 VALIDATION STATUS:
 - inference.py runs: NO
@@ -189,8 +187,102 @@ VALIDATION STATUS:
 - HF Space live: NO
 
 NOTES:
-Initial scaffold and supporting templates complete. Additional files were added as placeholders only (no implementation code) to prepare deployment, API exposure, and testing flows.
+Project initialized
 
 ---
 
 END OF FILE
+
+---
+
+## PROGRESS LOG ENTRY 2026-04-05
+
+### CURRENT PHASE
+SETUP
+
+### CURRENT TASK
+Repository baseline scaffold creation and extension (template-only, no implementation logic).
+
+### LAST COMPLETED
+Created architecture-aligned core scaffold and added supporting templates for deployment, API exposure, and testing.
+
+### NEXT STEPS
+- Implement environment state and transition logic in env/state.py and env/transitions.py
+- Implement OpenEnv interface and API handlers in env/core.py, env/interface.py, and env/api.py
+- Implement robust parser and inference loop behavior in utils/parser.py and inference.py
+- Implement task configs and task-specific behavior in tasks/task1.py to tasks/task4.py
+- Implement deterministic graders in graders/task1_grader.py to graders/task4_grader.py
+
+### BLOCKERS
+NONE
+
+### FILES MODIFIED
+- inference.py
+- openenv.yaml
+- Dockerfile
+- app.py
+- requirements.txt
+- .env
+- .env.example
+- .dockerignore
+- env/__init__.py
+- env/core.py
+- env/state.py
+- env/transitions.py
+- env/interface.py
+- env/api.py
+- tasks/__init__.py
+- tasks/config.py
+- tasks/task1.py
+- tasks/task2.py
+- tasks/task3.py
+- tasks/task4.py
+- tasks/registry.py
+- graders/__init__.py
+- graders/task1_grader.py
+- graders/task2_grader.py
+- graders/task3_grader.py
+- graders/task4_grader.py
+- graders/registry.py
+- utils/__init__.py
+- utils/parser.py
+- utils/constants.py
+- utils/helpers.py
+- utils/env_config.py
+- utils/logging_utils.py
+- utils/schemas.py
+- scripts/validate.sh
+- scripts/run_local.sh
+- scripts/smoke_test.sh
+- scripts/deploy_space.sh
+- tests/__init__.py
+- tests/unit/__init__.py
+- tests/unit/test_state.py
+- tests/unit/test_transitions.py
+- tests/unit/test_parser.py
+- tests/unit/test_graders.py
+- tests/integration/__init__.py
+- tests/integration/test_inference_loop.py
+- tests/integration/test_env_api.py
+- tests/adversarial/__init__.py
+- tests/adversarial/test_malformed_llm_outputs.py
+- .gitignore
+- context/10_progress.md.txt
+
+### ARCHITECTURE COMPLIANCE CHECK
+- [x] follows architecture.txt (core structure retained)
+- [ ] no new components added (supporting templates were added beyond strict minimal layout)
+- [x] no duplication introduced
+- [x] parsing logic unchanged (placeholder only)
+
+### VALIDATION STATUS
+- inference.py runs: NO (not implemented yet)
+- parser robust: NO (not implemented yet)
+- grader outputs valid: NO (not implemented yet)
+- deterministic: NO (not implemented yet)
+- docker builds: NO (template only)
+- HF Space live: NO
+
+### NOTES
+- All newly added project files are placeholders/templates only; no algorithmic logic populated.
+- Progress template section above was restored and left intact per workflow preference.

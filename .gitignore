@@ -1,9 +1,6 @@
 # Virtual Environments
 .venv/
 
-# Large Files / Archives
-context.zip
-
 # Python Cache & Compiled Files
 __pycache__/
 *.py[cod]
