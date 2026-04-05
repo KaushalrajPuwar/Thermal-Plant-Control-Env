@@ -3,6 +3,7 @@
 
 # Large Files / Archives
 context.zip
+context
 
 # Python Cache & Compiled Files
 __pycache__/
@@ -16,3 +17,4 @@ __pycache__/
 # OS generated files
 .DS_Store
 Thumbs.db
+__MACOSX
