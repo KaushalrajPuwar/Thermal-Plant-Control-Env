@@ -3,7 +3,6 @@
 
 # Large Files / Archives
 context.zip
-context
 
 # Python Cache & Compiled Files
 __pycache__/

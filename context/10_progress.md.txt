@@ -1,0 +1,196 @@
+# PROGRESS TRACKING FILE (MANDATORY)
+Version: 1
+
+---
+
+## PURPOSE
+
+This file is used to:
+- track current implementation state
+- coordinate between agents/humans
+- prevent architecture drift
+- maintain single source of truth for progress
+
+This file MUST be updated continuously.
+
+---
+
+## CORE RULE
+
+> This file is ALWAYS read before any work starts.
+
+---
+
+## STRUCTURE
+
+### CURRENT PHASE
+
+One of:
+- NOT_STARTED
+- SETUP
+- ENV_CORE
+- TASKS
+- GRADERS
+- INFERENCE
+- VALIDATION
+- DEPLOYMENT
+- FINAL_REVIEW
+- COMPLETE
+
+---
+
+### CURRENT TASK
+
+Describe what is actively being worked on.
+
+Example:
+"Implementing transition equations in env/core.py"
+
+---
+
+### LAST COMPLETED
+
+Last finished milestone.
+
+---
+
+### NEXT STEPS
+
+Bullet list of next actions.
+
+---
+
+### BLOCKERS
+
+List any blockers.
+
+If none:
+NONE
+
+---
+
+### FILES MODIFIED
+
+List files changed in last update.
+
+---
+
+### ARCHITECTURE COMPLIANCE CHECK
+
+Before every update, confirm:
+
+- [ ] follows architecture.txt
+- [ ] no new components added
+- [ ] no duplication introduced
+- [ ] parsing logic unchanged (unless intended)
+
+---
+
+### VALIDATION STATUS
+
+- inference.py runs: YES/NO
+- parser robust: YES/NO
+- grader outputs valid: YES/NO
+- deterministic: YES/NO
+- docker builds: YES/NO
+- HF Space live: YES/NO
+
+---
+
+### NOTES
+
+Any important decisions or reasoning.
+
+---
+
+## UPDATE RULES (STRICT)
+
+### ALWAYS:
+
+- Update BEFORE starting new task
+- Update AFTER completing task
+- Keep entries concise
+- Keep history accurate
+
+---
+
+### NEVER:
+
+- Skip updates
+- Modify architecture silently
+- Delete previous context
+- Add speculative changes
+
+---
+
+## ARCHITECTURE DRIFT PREVENTION
+
+Before ANY structural change:
+
+1. Justify change in NOTES
+2. Then implement
+3. Update architecture.txt only with human approval of twice confirmation with warning and with reason and justification.
+
+---
+
+## MULTI-AGENT RULE
+
+If multiple agents are used:
+
+- Each must read this file first
+- Each must update after work
+- No parallel conflicting changes
+
+---
+
+## FAILURE RULE
+
+If system breaks:
+
+- STOP
+- update BLOCKERS
+- do NOT proceed blindly
+
+---
+
+## INITIAL TEMPLATE
+
+CURRENT PHASE: SETUP
+
+CURRENT TASK:
+None
+
+LAST COMPLETED:
+Expanded scaffold with deployment/config placeholders, API/template components, registries, and testing skeleton
+
+NEXT STEPS:
+- Start implementing environment state and transition logic in env/state.py and env/transitions.py
+- Implement OpenEnv interface in env/core.py and env/interface.py
+- Implement parser and strict logging utilities for inference loop
+
+BLOCKERS:
+NONE
+
+FILES MODIFIED:
+inference.py, openenv.yaml, Dockerfile, app.py, requirements.txt, .env, .env.example, .dockerignore, env/*, tasks/*, graders/*, utils/*, scripts/*, tests/*
+
+ARCHITECTURE COMPLIANCE CHECK:
+- [x] follows architecture.txt
+- [ ] no new components added
+- [x] no duplication introduced
+- [x] parsing logic unchanged
+
+VALIDATION STATUS:
+- inference.py runs: NO
+- parser robust: NO
+- grader outputs valid: NO
+- deterministic: NO
+- docker builds: NO
+- HF Space live: NO
+
+NOTES:
+Initial scaffold and supporting templates complete. Additional files were added as placeholders only (no implementation code) to prepare deployment, API exposure, and testing flows.
+
+---
+
+END OF FILE
