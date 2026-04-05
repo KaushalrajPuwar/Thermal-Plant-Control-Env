@@ -18,3 +18,11 @@ __pycache__/
 .DS_Store
 Thumbs.db
 __MACOSX
+
+# Local environment files
+.env
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
