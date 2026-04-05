@@ -116,45 +116,6 @@ Must NEVER throw.
 
 ---
 
-## REPOSITORY STRUCTURE
-
-```
-root/
-│
-├── inference.py
-├── openenv.yaml
-├── Dockerfile
-├── README.md
-│
-├── env/
-│   ├── core.py
-│   ├── state.py
-│   └── transitions.py
-│
-├── tasks/
-│   ├── task1.py
-│   ├── task2.py
-│   ├── task3.py
-│   ├── task4.py
-│   └── config.py
-│
-├── graders/
-│   ├── task1_grader.py
-│   ├── task2_grader.py
-│   ├── task3_grader.py
-│   └── task4_grader.py
-│
-├── utils/
-│   ├── parser.py
-│   ├── constants.py
-│   └── helpers.py
-│
-└── scripts/
-    └── validate.sh
-```
-
----
-
 ## DATA FLOW
 
 ### Step cycle

@@ -53,7 +53,7 @@ S = Stress (0 → 1.5)
 D = Degradation (0 → 1)
 
 ---
-
+ 
 ## ACTION SPACE
 
 Action = { U_target, F_target }
