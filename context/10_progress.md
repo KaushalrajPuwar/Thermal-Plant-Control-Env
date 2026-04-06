@@ -960,3 +960,60 @@ NONE
 - `state()` now remains full precision for internal/debugging use while `reset()` and `step()` observations are rounded for LLM-facing consumption.
 - Stress and degradation rates were increased modestly so the rounded observation view still exposes meaningful causal changes within the short episode horizon.
 - Context docs now explicitly reserve raw internal values for future graders and require future inference/logging code to present rounded observations to the LLM.
+
+---
+
+## PROGRESS LOG ENTRY 2026-04-06
+
+### CURRENT PHASE
+
+INFERENCE
+
+### CURRENT TASK
+
+Freezing the inference parser, stdout logging, prompt-response handshake, and trajectory schema contracts.
+
+### LAST COMPLETED
+
+Implemented deterministic parser, logging, and trajectory capture contracts across the inference path.
+
+### NEXT STEPS
+
+- Run `inference.py` locally with configured `HF_TOKEN`, `MODEL_NAME`, and `API_BASE_URL`
+- Add or update parser/inference tests for malformed model outputs and stdout formatting
+- Implement grader modules to consume raw trajectory state
+- Validate Docker, OpenEnv compliance, and deployment path
+
+### BLOCKERS
+
+NONE
+
+### FILES MODIFIED
+
+- inference.py
+- utils/parser.py
+- utils/logging_utils.py
+- utils/schemas.py
+- context/10_progress.md
+
+### ARCHITECTURE COMPLIANCE CHECK
+
+- [x] follows architecture.txt
+- [x] no new components added
+- [x] no duplication introduced
+- [x] parsing logic unchanged (unless intended)
+
+### VALIDATION STATUS
+
+- inference.py runs: NO
+- parser robust: NO
+- grader outputs valid: NO
+- deterministic: NO
+- docker builds: NO
+- HF Space live: NO
+
+### NOTES
+
+Parser contract is now frozen to strict JSON first, anchored fallback extraction for `U_target` and `F_target`, clamping to `[0,1]`, previous-valid/default fallback, and explicit invalid-output penalty metadata.
+Stdout contract is now frozen to exact `[START]`, `[STEP]`, and `[END]` helpers with lowercase booleans, compact canonical action JSON, and fixed 2-decimal numeric formatting.
+Trajectory contract now captures raw LLM text, parser metadata, canonical action, rounded observation, raw state snapshot, reward, and termination metadata so future graders/reporting can use raw state instead of display values.
