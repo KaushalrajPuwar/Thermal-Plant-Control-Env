@@ -32,6 +32,8 @@ Test individual components:
 - clamping behavior
 - failure conditions
 - grader outputs
+- raw-state vs rounded-observation separation
+- deterministic startup generation keyed by task_id and episode_id
 
 ---
 
@@ -137,6 +139,7 @@ Expected:
 
 - run 20+ episodes
 - ensure no NaN or explosion
+- ensure startup states are non-catastrophic across episode_id sweeps
 
 ---
 
@@ -147,6 +150,9 @@ Verify:
 - increasing U increases P
 - increasing P increases T
 - increasing F reduces T
+
+Also verify:
+- meaningful actions change at least one rounded observation value within 1–2 steps
 
 ---
 
@@ -169,6 +175,7 @@ Ensure:
 - score ∈ [0,1]
 - deterministic output
 - different trajectories → different scores
+- grader uses raw internal values, not rounded display observations
 
 ---
 
@@ -207,6 +214,31 @@ Run same setup twice:
 Expected:
 - identical scores
 - identical logs (except timestamps if any)
+- identical startup state for the same `(task_id, episode_id)`
+- different startup state when `episode_id` changes within the same task
+
+---
+
+## VISIBILITY TEST
+
+For each task:
+
+- apply a meaningful control change
+- verify rounded observation changes are visible within 1–2 steps for primary variables `P`, `T`, and `Pr`
+- verify `S` and `D` are not permanently flat under conditions where they should be accumulating
+
+---
+
+## ROUNDING SAFETY TEST
+
+Compare:
+- raw internal trajectory
+- rounded observation trajectory
+
+Ensure:
+- internal values retain full precision
+- rounded observations remain readable
+- rounded observations do not hide causal impact for multiple consecutive steps under meaningful actions
 
 ---
 

@@ -83,6 +83,11 @@ User prompt must include:
 - last reward
 - short history (last 3–4 steps)
 
+Use the rounded observation view only:
+- all displayed state variables rounded to 2 decimals
+- do NOT inject raw float repr values into the prompt
+- keep the prompt readable and concise
+
 ---
 
 ## ACTION FORMAT (STRICT TARGET)
@@ -164,6 +169,10 @@ Every step must print:
 
 [STEP] step=... action=... reward=... done=... error=...
 
+When state values are logged or displayed outside the raw action string:
+- use the rounded 2-decimal observation view
+- keep raw internal state out of user-facing logs unless debugging locally
+
 ---
 
 ## ACTION STRING
@@ -229,6 +238,15 @@ success = score >= threshold (e.g., 0.1)
 - fixed prompts
 - low temperature
 - no randomness in env
+- pass explicit task_id and episode_id when selecting episodes so the same scenario can be replayed
+
+---
+
+## RAW VS DISPLAYED STATE
+
+- `reset()` / `step()` observations are the LLM-facing rounded view
+- `state()` may remain full precision for debugging and future grader use
+- inference.py should not use the raw full-precision state in prompts unless explicitly debugging
 
 ---
 

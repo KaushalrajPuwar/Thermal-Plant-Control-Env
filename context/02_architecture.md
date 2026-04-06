@@ -61,13 +61,15 @@ Responsibilities:
 Responsibilities:
 
 - Hold full state
+- Generate deterministic startup state from task_id + episode_id
 - Apply transitions
 - Clamp values
 - Return:
-  - observation
+  - observation (rounded, agent-facing)
   - reward
   - done
   - info
+  - raw state via state()
 
 Must be:
 - deterministic
@@ -85,6 +87,8 @@ Responsibilities:
   - thresholds
   - coefficients
 - Switch behavior per task
+- Select the correct task_id for the episode
+- Pass task_id and episode_id into the environment reset/init path
 
 NO duplication of environment logic.
 
@@ -95,6 +99,7 @@ NO duplication of environment logic.
 Responsibilities:
 
 - Take full trajectory
+- Use raw internal state values, not rounded display observations
 - Compute normalized score ∈ [0,1]
 - Deterministic
 
@@ -125,8 +130,10 @@ Must NEVER throw.
 3. LLM → raw text
 4. parser → action
 5. env.step(action)
-6. reward + next state
+6. reward + next observation
 7. log output
+
+Raw state remains available for grading/debugging, but the LLM-facing loop should consume rounded observations.
 
 ---
 

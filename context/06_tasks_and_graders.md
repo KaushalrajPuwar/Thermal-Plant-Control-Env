@@ -22,10 +22,14 @@ This file is authoritative for scoring.
 - Rewards are step-level (unnormalized)
 - Graders compute final score in [0,1]
 - All graders must be deterministic
+- Task selection logic passes `task_id` and `episode_id` into the env so startup state is reproducible and task-aware
+- Graders use raw internal trajectory values, not rounded LLM-facing observations
 
 ---
 
 ## SHARED METRICS (computed over trajectory)
+
+All symbols below refer to raw internal state values collected from the trajectory.
 
 Let:
 - P_t = power at step t
@@ -80,6 +84,9 @@ L_t = constant (e.g., 0.6)
 ### Objective
 Maintain P close to L while staying safe and smooth.
 
+Startup expectation:
+- starts in a stable, low-wear operating regime with readable but safe dynamics
+
 ### Grader
 
 Score_T1 = 1
@@ -102,6 +109,9 @@ Step changes:
 
 ### Objective
 Track changing load with minimal lag and overshoot.
+
+Startup expectation:
+- starts in a lower-load, safe regime aligned with the early task phase, not in a stressed startup
 
 ### Additional Metric
 
@@ -132,6 +142,9 @@ L_t = moderately high constant (e.g., 0.7)
 Stress accumulates when T > T_warning (0.9)
 
 Agent must reduce risk BEFORE visible failure.
+
+Startup expectation:
+- starts mildly strained but recoverable so the LLM can see emerging risk before catastrophic failure
 
 ### Additional Metrics
 
@@ -168,6 +181,9 @@ Score_T3 = Clamp(Score_T3)
 ### Special Mechanic
 Degradation reduces cooling effectiveness over time.
 
+Startup expectation:
+- starts with visibly higher inherited degradation than other tasks while still remaining recoverable before the disturbance
+
 ### Additional Metrics
 
 Recovery Time (RT):
@@ -203,6 +219,7 @@ Score_T4 = Clamp(Score_T4)
 - All metrics deterministic
 - Different policies must yield different scores
 - Failure must significantly reduce score but not always zero it
+- Do not compute grader metrics from rounded prompt/display values
 
 ---
 

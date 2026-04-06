@@ -1,0 +1,209 @@
+"""Shared constants for the thermal plant environment."""
+
+from __future__ import annotations
+
+from typing import Dict, Tuple
+
+# Canonical action keys.
+ACTION_U_TARGET = "U_target"
+ACTION_F_TARGET = "F_target"
+
+# Canonical observation/state keys.
+STATE_KEYS = ("P", "L", "T", "Pr", "U", "F", "S", "D")
+
+# Variable bounds.
+BOUND_01: Tuple[float, float] = (0.0, 1.0)
+BOUND_015: Tuple[float, float] = (0.0, 1.5)
+
+P_BOUNDS: Tuple[float, float] = BOUND_01
+L_BOUNDS: Tuple[float, float] = BOUND_01
+U_BOUNDS: Tuple[float, float] = BOUND_01
+F_BOUNDS: Tuple[float, float] = BOUND_01
+D_BOUNDS: Tuple[float, float] = BOUND_01
+
+T_BOUNDS: Tuple[float, float] = BOUND_015
+PR_BOUNDS: Tuple[float, float] = BOUND_015
+S_BOUNDS: Tuple[float, float] = BOUND_015
+
+# Deterministic default initialization for the state dataclass.
+DEFAULT_P = 0.4
+DEFAULT_L = 0.6
+DEFAULT_T = 0.6
+DEFAULT_PR = 0.6
+DEFAULT_U = 0.5
+DEFAULT_F = 0.5
+DEFAULT_S = 0.0
+DEFAULT_D = 0.0
+
+DEFAULT_STATE: Dict[str, float] = {
+	"P": DEFAULT_P,
+	"L": DEFAULT_L,
+	"T": DEFAULT_T,
+	"Pr": DEFAULT_PR,
+	"U": DEFAULT_U,
+	"F": DEFAULT_F,
+	"S": DEFAULT_S,
+	"D": DEFAULT_D,
+}
+
+# Episode controls.
+DEFAULT_MAX_STEPS = 20
+DEFAULT_TASK_ID = "task1"
+DEFAULT_EPISODE_ID = 0
+OBSERVATION_DECIMALS = 2
+
+# Regime-map task identifiers.
+TASK_CODE: Dict[str, int] = {
+	"task1": 1,
+	"task2": 2,
+	"task3": 3,
+	"task4": 4,
+}
+
+# Startup solver coefficients shared across tasks.
+GAP_DEG_DRAG = 0.10
+GAP_TENSION_DRAG = 0.05
+P_STRESS_DRAG = 0.02
+
+U_WEAR_GAIN = 0.08
+U_GAP_GAIN = 0.06
+U_MARGIN_RELIEF = 0.04
+
+F_POWER_GAIN = 0.55
+F_WEAR_GAIN = 0.30
+F_TENSION_GAIN = 0.18
+F_STRESS_GAIN = 0.10
+F_MARGIN_RELIEF = 0.06
+
+COOL_DEG_LOSS = 0.60
+
+T_DEG_GAIN = 0.20
+T_STRESS_GAIN = 0.15
+T_TENSION_GAIN = 0.12
+
+PR_DEG_GAIN = 0.10
+PR_TENSION_GAIN = 0.08
+PR_MARGIN_PENALTY = 0.06
+
+RECOVER_F_GAIN = 0.70
+RECOVER_P_GAIN = 0.25
+
+# Coefficients used by the coupled startup solver.
+INIT_P_U_GAIN = 0.90
+INIT_T_BIAS = 0.35
+INIT_T_P_GAIN = 0.45
+INIT_T_F_GAIN = 0.30
+
+# Task regime maps.
+TASK_STARTUP_PROFILES: Dict[str, Dict[str, float]] = {
+	"task1": {
+		"aL": 0.60,
+		"sL": 0.10,
+		"aD": 0.04,
+		"sD": 0.05,
+		"aT": 0.12,
+		"sT": 0.10,
+		"aM": 0.82,
+		"sM": 0.08,
+		"gap_scale": 0.05,
+		"d_max": 0.08,
+		"s_base": 0.00,
+		"s_gain": 0.14,
+		"f_bias": 0.16,
+		"t_task_bias": -0.06,
+		"soft_t_cap": 0.78,
+		"soft_pr_cap": 0.84,
+	},
+	"task2": {
+		"aL": 0.50,
+		"sL": 0.12,
+		"aD": 0.05,
+		"sD": 0.06,
+		"aT": 0.18,
+		"sT": 0.14,
+		"aM": 0.70,
+		"sM": 0.10,
+		"gap_scale": 0.08,
+		"d_max": 0.10,
+		"s_base": 0.00,
+		"s_gain": 0.18,
+		"f_bias": 0.18,
+		"t_task_bias": -0.02,
+		"soft_t_cap": 0.82,
+		"soft_pr_cap": 0.88,
+	},
+	"task3": {
+		"aL": 0.70,
+		"sL": 0.10,
+		"aD": 0.12,
+		"sD": 0.10,
+		"aT": 0.48,
+		"sT": 0.18,
+		"aM": 0.46,
+		"sM": 0.10,
+		"gap_scale": 0.07,
+		"d_max": 0.22,
+		"s_base": 0.08,
+		"s_gain": 0.30,
+		"f_bias": 0.24,
+		"t_task_bias": 0.05,
+		"soft_t_cap": 0.92,
+		"soft_pr_cap": 0.98,
+	},
+	"task4": {
+		"aL": 0.60,
+		"sL": 0.10,
+		"aD": 0.34,
+		"sD": 0.14,
+		"aT": 0.34,
+		"sT": 0.16,
+		"aM": 0.55,
+		"sM": 0.10,
+		"gap_scale": 0.06,
+		"d_max": 0.45,
+		"s_base": 0.03,
+		"s_gain": 0.22,
+		"f_bias": 0.30,
+		"t_task_bias": 0.04,
+		"soft_t_cap": 0.88,
+		"soft_pr_cap": 0.94,
+	},
+}
+
+# Transition coefficients from modeling spec.
+U_INERTIA_PREV = 0.8
+U_INERTIA_TARGET = 0.2
+
+F_INERTIA_PREV = 0.8
+F_INERTIA_TARGET = 0.2
+
+P_PREV_COEF = 0.85
+P_U_COEF = 0.15
+
+K_COOL_BASE = 0.5
+T_POWER_COEF = 0.4
+
+PR_PREV_COEF = 0.7
+PR_MIX_COEF = 0.3
+PR_POWER_COEF = 0.5
+
+T_WARNING = 0.9
+# Keep stress accumulation visible on a 2-decimal dashboard within a short horizon.
+STRESS_RATE = 0.2
+
+# Keep degradation visible under meaningful control changes within 1-2 steps.
+DEGRADATION_RATE = 0.06
+
+# Failure thresholds.
+FAIL_T = 1.3
+FAIL_PR = 1.3
+FAIL_S = 1.3
+
+# Reward coefficients.
+SAFETY_PENALTY_COEF = 2.0
+OSCILLATION_PENALTY_COEF = 0.2
+STRESS_PENALTY_COEF = 0.3
+
+# Safety soft thresholds for reward penalties.
+SOFT_T = 1.0
+SOFT_PR = 1.0

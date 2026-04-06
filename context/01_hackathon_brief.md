@@ -188,6 +188,7 @@ WHAT THE AGENT SHOULD EXPERIENCE
 
 The LLM agent should experience:
 - a readable current state
+- a rounded observation view that is easy to parse at a glance
 - a small number of clear controls
 - rewards that help it adjust within the episode
 - penalties when it acts badly
@@ -202,6 +203,8 @@ WHAT TO KEEP IN MIND WHILE CODING
 - Keep outputs deterministic.
 - Keep action parsing robust.
 - Keep state transitions bounded.
+- Keep internal simulation state full precision.
+- Keep LLM-facing observations concise and rounded.
 - Keep the grading clear.
 - Keep the environment simple enough to inspect.
 - Keep the LLM prompt concise and unambiguous.
