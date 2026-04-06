@@ -8,6 +8,7 @@ dependencies = [
     "huggingface-hub>=1.9.0",
     "openai>=2.30.0",
     "openenv-core>=0.2.3",
+    "pytest>=8.4.2",
     "torch>=2.11.0",
     "transformers>=5.5.0",
 ]

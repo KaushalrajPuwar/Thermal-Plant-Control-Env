@@ -36,10 +36,17 @@ For each episode:
    - build prompt
    - call LLM
    - parse output → action
-   - env.step(action)
+   - interface.step(action)
    - log [STEP]
 3. compute score
 4. log [END]
+
+Inference should use the shared OpenEnv interface boundary for:
+- reset()
+- step()
+- get_state()
+
+Do NOT instantiate the env core directly inside `inference.py`.
 
 ---
 
@@ -49,7 +56,7 @@ Must use:
 
 OpenAI(
     base_url=API_BASE_URL,
-    api_key=API_KEY
+    api_key=HF_TOKEN
 )
 
 Environment variables:
@@ -169,7 +176,7 @@ Every step must print:
 
 [STEP] step=... action=... reward=... done=... error=...
 
-When state values are logged or displayed outside the raw action string:
+When state values are logged or displayed outside the action string:
 - use the rounded 2-decimal observation view
 - keep raw internal state out of user-facing logs unless debugging locally
 
@@ -177,7 +184,9 @@ When state values are logged or displayed outside the raw action string:
 
 ## ACTION STRING
 
-Must log EXACT raw action string returned by LLM.
+Must log the canonical parsed/clamped compact JSON action string that is actually sent to the environment.
+
+Keep the exact raw LLM text in trajectory/debug artifacts only.
 
 ---
 

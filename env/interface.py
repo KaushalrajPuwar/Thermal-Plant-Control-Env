@@ -53,11 +53,21 @@ class ConcreteOpenEnvInterface(OpenEnvInterface):
     _instance: "ConcreteOpenEnvInterface" | None = None
     _env: ThermalPlantEnv | None = None
 
-    def __new__(cls) -> "ConcreteOpenEnvInterface":
+    def __new__(cls, max_steps: int | None = None) -> "ConcreteOpenEnvInterface":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._env = ThermalPlantEnv()
+            if max_steps is None:
+                cls._env = ThermalPlantEnv()
+            else:
+                cls._env = ThermalPlantEnv(max_steps=int(max_steps))
+        elif cls._env is not None and max_steps is not None:
+            cls._env.max_steps = int(max_steps)
         return cls._instance
+
+    def __init__(self, max_steps: int | None = None) -> None:
+        """Allow non-API callers to configure the shared env without bypassing the interface."""
+        if self._env is not None and max_steps is not None:
+            self._env.max_steps = int(max_steps)
 
     def get_state(self) -> Dict[str, Any]:
         """Returns the full, unrounded internal state from the core environment."""

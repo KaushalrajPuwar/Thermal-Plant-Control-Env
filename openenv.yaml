@@ -2,7 +2,7 @@
 # Defines the OpenEnv-compliant metadata for the thermal plant benchmark.
 
 # The name of the benchmark. This should be a unique, descriptive identifier.
-name: thermal-plant-control-v1
+name: thermal-plant-control
 
 # A brief, one-sentence description of the benchmark's goal.
 description: A benchmark for controlling a simulated thermal power plant with trade-offs between power output, efficiency, and system stress.

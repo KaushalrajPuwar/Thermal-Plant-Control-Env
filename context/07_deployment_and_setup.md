@@ -83,15 +83,27 @@ os.getenv("HF_TOKEN")
 
 Steps:
 
-1. Set environment variables
-2. Run:
+1. Set environment variables for repo-local inference
+2. Run repo-local inference from the project environment:
 
-python inference.py
+./.venv/bin/python inference.py
 
 3. Verify:
 - no crash
 - logs correct
 - score generated
+
+4. For local API/server smoke checks, run:
+
+./scripts/run_local.sh
+
+Then, from another shell, run:
+
+./scripts/smoke_test.sh
+
+5. Judge/container expectation remains:
+
+python inference.py
 
 ---
 
@@ -114,14 +126,14 @@ Dockerfile
 
 ### Example structure:
 
-FROM python:3.10
+FROM python:3.13
 
 WORKDIR /app
 COPY . /app
 
 RUN pip install -r requirements.txt
 
-CMD ["python", "inference.py"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ---
 

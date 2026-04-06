@@ -120,6 +120,9 @@ NO deviations.
 #### STEP
 [STEP] step=<n> action=<action_str> reward=<float> done=<true|false> error=<msg|null>
 
+Here `action=<action_str>` is the canonical parsed/clamped compact JSON action string sent to the environment.
+It is not the raw untrusted model text.
+
 #### END
 [END] success=<true|false> steps=<n> score=<float> rewards=<r1,r2,...>
 
@@ -132,6 +135,8 @@ NO deviations.
 - one STEP per step
 - no extra prints
 - no multiline logs
+- action string must be single-line compact JSON
+- action values should be formatted to 2 decimals
 - booleans must be lowercase
 - rewards formatted to 2 decimals
 

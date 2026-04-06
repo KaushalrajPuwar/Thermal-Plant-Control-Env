@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 from openai import OpenAI
 
-from env.core import ThermalPlantEnv
+from env.interface import ConcreteOpenEnvInterface
 from utils.constants import DEFAULT_TASK_ID
 from utils.logging_utils import canonical_action_string, log_end, log_start, log_step
 from utils.parser import DEFAULT_F_TARGET, DEFAULT_U_TARGET, parse_llm_action
@@ -111,7 +111,7 @@ def determine_termination_reason(loop_error: Optional[str], done: bool, steps_ta
 def main() -> None:
 	"""Run a full deterministic inference episode and always emit end logs."""
 	model_name_for_logs = MODEL_NAME or "unset"
-	env = ThermalPlantEnv(max_steps=MAX_STEPS, task_id=TASK_NAME, episode_id=EPISODE_ID)
+	env = ConcreteOpenEnvInterface(max_steps=MAX_STEPS)
 	client: Optional[OpenAI] = None
 	last_valid_action: Optional[Dict[str, float]] = None
 	observation = env.reset(task_id=TASK_NAME, episode_id=EPISODE_ID)
@@ -152,6 +152,7 @@ def main() -> None:
 			total_reward = env_reward + parsed_action.penalty_applied
 			error = info.get("error")
 
+			# Judge-facing stdout uses the canonical parsed/clamped action string.
 			action_string = canonical_action_string(
 				u_target=canonical_action["U_target"],
 				f_target=canonical_action["F_target"],
@@ -173,7 +174,7 @@ def main() -> None:
 					parsed_action=parsed_action,
 					canonical_action=canonical_action,
 					observation=dict(observation),
-					raw_state=env.state(),
+					raw_state=env.get_state(),
 					reward=total_reward,
 					done=done,
 					error=error,
@@ -214,4 +215,3 @@ def main() -> None:
 
 if __name__ == "__main__":
 	main()
-

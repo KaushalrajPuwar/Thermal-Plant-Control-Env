@@ -199,7 +199,7 @@ Ensure:
 
 ### Run:
 
-python inference.py
+./.venv/bin/python inference.py
 
 Check:
 - no exceptions
@@ -251,7 +251,8 @@ docker build .
 Then run container:
 
 Expected:
-- inference works
+- API server starts
+- `./scripts/smoke_test.sh` passes against the container
 - no missing dependencies
 
 ---
@@ -273,10 +274,11 @@ Expected:
 
 Simulate judge flow:
 
-1. run inference.py
-2. verify logs
-3. verify score
-4. verify no crash
+1. run `./scripts/validate.sh`
+2. run `./.venv/bin/python inference.py`
+3. verify logs and score
+4. start the local API server with `./scripts/run_local.sh`
+5. run `./scripts/smoke_test.sh`
 
 ---
 

@@ -1,14 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# Builds the Docker image and runs the container locally.
+# Builds the API server Docker image and runs it locally for endpoint smoke tests.
 #
 
-# Set a default image name
-IMAGE_NAME="thermal-plant-env"
+set -euo pipefail
 
-echo "Building Docker image: $IMAGE_NAME..."
-docker build -t $IMAGE_NAME .
+IMAGE_NAME="${IMAGE_NAME:-thermal-plant-env}"
+PORT="${PORT:-8000}"
 
-echo "Running Docker container..."
-# Run the container, mapping port 8000 on the host to port 8000 in the container
-docker run -p 8000:8000 $IMAGE_NAME
+echo "Building API server image: $IMAGE_NAME..."
+docker build -t "$IMAGE_NAME" .
+
+echo "Starting local API server on http://localhost:${PORT} ..."
+docker run --rm -p "${PORT}:8000" "$IMAGE_NAME"

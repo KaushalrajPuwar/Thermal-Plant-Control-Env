@@ -46,7 +46,7 @@ Responsibilities:
 - Build prompt from state
 - Call LLM via OpenAI-compatible client
 - Parse output → action
-- Call env.step()
+- Call the shared OpenEnv interface for reset(), step(), and raw state access
 - Log EXACT format:
   - [START]
   - [STEP]
@@ -125,11 +125,11 @@ Must NEVER throw.
 
 ### Step cycle
 
-1. state → prompt
+1. interface reset/state → prompt
 2. prompt → LLM
 3. LLM → raw text
 4. parser → action
-5. env.step(action)
+5. interface.step(action)
 6. reward + next observation
 7. log output
 
@@ -155,6 +155,7 @@ Raw state remains available for grading/debugging, but the LLM-facing loop shoul
 - Keep parsing isolated
 - Keep grading separate
 - Keep transitions explicit
+- Keep inference and API aligned on the same interface boundary
 
 ---
 
