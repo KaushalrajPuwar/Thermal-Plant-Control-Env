@@ -228,6 +228,56 @@ Terminate on small mistake.
 
 ---
 
+## SECTION 8.5 — BAD PRECISION POLICY
+
+### WRONG
+
+- exposing raw float repr values to the LLM
+- rounding internal state every step
+- using rounded display values for grading
+
+---
+
+### WHY THIS FAILS
+
+- noisy prompts make the state harder to read
+- repeated rounding can flatten gradual dynamics
+- grader sensitivity drops if it uses display values instead of raw internals
+
+---
+
+### CORRECT
+
+- keep internal simulation full precision
+- expose rounded observations to the LLM
+- keep graders on raw internal values
+
+---
+
+## SECTION 8.6 — INVISIBLE DYNAMICS
+
+### WRONG
+
+- state changes smaller than display resolution for many consecutive steps
+- delayed effects that never become visible during the episode
+
+---
+
+### WHY THIS FAILS
+
+- LLM cannot observe causality
+- actions look disconnected from consequences
+- benchmark becomes unfair or uninformative
+
+---
+
+### CORRECT
+
+- meaningful actions change at least one displayed state variable within 1–2 steps
+- stress and degradation remain gradual but become visible within the episode horizon
+
+---
+
 ## SECTION 9 — INFRA NEGLECT
 
 ### WRONG

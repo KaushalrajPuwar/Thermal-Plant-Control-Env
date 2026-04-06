@@ -37,6 +37,25 @@ We ARE building:
 
 ---
 
+## PRECISION POLICY
+
+- Internal simulation state uses full floating-point precision
+- Do NOT round values during transitions, reward computation, or grading
+- LLM-facing observations should be rounded to 2 decimals
+- The raw state and the rounded observation are different views of the same plant
+
+---
+
+## STARTUP STATE POLICY
+
+- Episode startup must be deterministic per `(task_id, episode_id)`
+- Do NOT sample each state variable independently
+- Build the initial state from a coupled regime map so `P, L, T, Pr, U, F, S, D` are coherent together
+- Task routing belongs outside the env core; the task layer or inference layer passes `task_id`
+- Startup must be safe and recoverable for the intended task, not arbitrarily random or fixed
+
+---
+
 ## STATE VARIABLES
 
 All values MUST be bounded.
@@ -102,13 +121,13 @@ Pr(t) = 0.7 * Pr(t-1) + 0.3 * (T(t) + 0.5 * P(t))
 
 T_warning = 0.9
 
-S(t) = S(t-1) + max(0, T(t) - T_warning) * 0.1
+S(t) = S(t-1) + max(0, T(t) - T_warning) * 0.2
 
 ---
 
 ### 6. Degradation (Task 4)
 
-D(t) = D(t-1) + 0.02 * abs(U_target - U(t-1))
+D(t) = D(t-1) + 0.06 * abs(U_target - U(t-1))
 
 Cooling effectiveness reduced:
 
@@ -160,6 +179,7 @@ reward -= S(t) * 0.3
 ### 1. Delayed effects
 - stress accumulates slowly
 - temperature responds gradually
+- delayed effects must still become visible to a 2-decimal observation view within a short horizon
 
 ---
 
@@ -177,6 +197,12 @@ reward -= S(t) * 0.3
 ### 4. Recoverability
 - small mistakes are recoverable
 - large violations terminate
+
+---
+
+### 5. Observation visibility
+- meaningful actions should change at least one displayed state variable within 1–2 steps
+- primary feedback variables should usually move by about 0.01–0.05 per step on the rounded observation view
 
 ---
 
@@ -200,6 +226,8 @@ After implementation verify:
 - increasing F decreases T
 - high T increases S
 - high D reduces cooling effectiveness
+- rounded observations still show visible state change within 1–2 steps for meaningful actions
+- same `(task_id, episode_id, action sequence)` gives the same trajectory
 
 ---
 

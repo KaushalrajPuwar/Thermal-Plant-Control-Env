@@ -15,8 +15,9 @@ __pycache__/
 Thumbs.db
 __MACOSX
 
-# Local environment files
-.env
+# Local  files
+.github
+plan.md
 
 # Test artifacts
 .pytest_cache/
