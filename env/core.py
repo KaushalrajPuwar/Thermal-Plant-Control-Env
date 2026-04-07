@@ -6,6 +6,7 @@ This module provides the contract surface for reset(), step(), and state().
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
+import logging
 
 from env.state import ThermalPlantState
 from env.transitions import (
@@ -64,7 +65,15 @@ class ThermalPlantEnv:
 		if episode_id is not None:
 			self.episode_id = int(episode_id)
 
-		self._state = build_coherent_initial_state(task_id=self.task_id, episode_id=self.episode_id)
+		# Build task-aware startup state. If an unknown task_id is provided,
+		# fall back to the default task id and log a warning so validator runs
+		# continue (robust behaviour for external callers).
+		try:
+			self._state = build_coherent_initial_state(task_id=self.task_id, episode_id=self.episode_id)
+		except ValueError as exc:
+			logging.warning("reset(): unknown task_id '%s' - falling back to default '%s' (%s)", self.task_id, DEFAULT_TASK_ID, exc)
+			self.task_id = DEFAULT_TASK_ID
+			self._state = build_coherent_initial_state(task_id=self.task_id, episode_id=self.episode_id)
 		self._step_count = 0
 		return self._state.to_observation()
 

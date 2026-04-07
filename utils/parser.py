@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import os
 from typing import Any, Mapping, Optional
 
 from utils.schemas import ParsedAction
@@ -15,6 +16,7 @@ DEFAULT_F_TARGET = 0.5
 _NUMBER_PATTERN = r"-?(?:\d+(?:\.\d*)?|\.\d+)"
 _U_TARGET_PATTERN = re.compile(r'"U_target"\s*:\s*(' + _NUMBER_PATTERN + r")")
 _F_TARGET_PATTERN = re.compile(r'"F_target"\s*:\s*(' + _NUMBER_PATTERN + r")")
+_PAIR_PATTERN = re.compile(r'^\s*(' + _NUMBER_PATTERN + r')\s+(' + _NUMBER_PATTERN + r')\s*$')
 
 
 def _clamp_unit_interval(value: Any, *, fallback: float) -> float:
@@ -72,50 +74,63 @@ def parse_llm_action(
     previous_valid_action: Optional[Mapping[str, float]] = None,
     default_action: Optional[Mapping[str, float]] = None,
 ) -> ParsedAction:
-    """Parse untrusted model output into a canonical action without raising."""
-    text = (raw_text or "").strip()
-    fallback_default = default_action or {
-        "U_target": DEFAULT_U_TARGET,
-        "F_target": DEFAULT_F_TARGET,
-    }
+	"""Parse untrusted model output into a canonical action without raising."""
+	text = (raw_text or "").strip()
+	fallback_default = default_action or {
+		"U_target": DEFAULT_U_TARGET,
+		"F_target": DEFAULT_F_TARGET,
+	}
 
-    try:
-        # Stage 1: Attempt strict JSON parsing
-        payload = json.loads(text)
-        if not isinstance(payload, Mapping):
-            raise ValueError("json payload is not an object")
-        return _from_mapping(payload, text)
-    except Exception as json_error:
-        json_error_message = str(json_error)
+	try:
+		payload = json.loads(text)
+		if not isinstance(payload, Mapping):
+			raise ValueError("json payload is not an object")
+		return _from_mapping(payload, text)
+	except Exception as json_error:
+		json_error_message = str(json_error)
 
-    try:
-        # Stage 2: Fallback to anchored regex extraction
-        return _anchored_extract(text)
-    except Exception as fallback_error:
-        fallback_error_message = str(fallback_error)
+	try:
+		return _anchored_extract(text)
+	except Exception as fallback_error:
+		fallback_error_message = str(fallback_error)
 
-    # Stage 3: Fallback to the previous valid action if available
-    if previous_valid_action is not None:
-        return ParsedAction(
-            u_target=_clamp_unit_interval(previous_valid_action.get("U_target"), fallback=DEFAULT_U_TARGET),
-            f_target=_clamp_unit_interval(previous_valid_action.get("F_target"), fallback=DEFAULT_F_TARGET),
-            source="previous_valid",
-            used_fallback=True,
-            invalid_output=True,
-            penalty_applied=INVALID_OUTPUT_PENALTY,
-            raw_text=text,
-            parse_error=f"{json_error_message}; {fallback_error_message}",
-        )
+	# Always try to match the compact "value value" pair format as a valid
+	# alternative to JSON, since the system prompt may be tuned for pair output.
+	pair_match = _PAIR_PATTERN.match(text)
+	if pair_match:
+		u_val = _clamp_unit_interval(pair_match.group(1), fallback=DEFAULT_U_TARGET)
+		f_val = _clamp_unit_interval(pair_match.group(2), fallback=DEFAULT_F_TARGET)
+		return ParsedAction(
+			u_target=u_val,
+			f_target=f_val,
+			source="fallback",
+			used_fallback=False,
+			invalid_output=False,
+			penalty_applied=0.0,
+			raw_text=text,
+			parse_error=None,
+		)
 
-    # Stage 4: Fallback to a hardcoded default action
-    return ParsedAction(
-        u_target=_clamp_unit_interval(fallback_default.get("U_target"), fallback=DEFAULT_U_TARGET),
-        f_target=_clamp_unit_interval(fallback_default.get("F_target"), fallback=DEFAULT_F_TARGET),
-        source="default",
-        used_fallback=True,
-        invalid_output=True,
-        penalty_applied=INVALID_OUTPUT_PENALTY,
-        raw_text=text,
-        parse_error=f"{json_error_message}; {fallback_error_message}",
-    )
+	if previous_valid_action is not None:
+		return ParsedAction(
+			u_target=_clamp_unit_interval(previous_valid_action.get("U_target"), fallback=DEFAULT_U_TARGET),
+			f_target=_clamp_unit_interval(previous_valid_action.get("F_target"), fallback=DEFAULT_F_TARGET),
+			source="previous_valid",
+			used_fallback=True,
+			invalid_output=True,
+			penalty_applied=INVALID_OUTPUT_PENALTY,
+			raw_text=text,
+			parse_error=f"{json_error_message}; {fallback_error_message}",
+		)
+
+	return ParsedAction(
+		u_target=_clamp_unit_interval(fallback_default.get("U_target"), fallback=DEFAULT_U_TARGET),
+		f_target=_clamp_unit_interval(fallback_default.get("F_target"), fallback=DEFAULT_F_TARGET),
+		source="default",
+		used_fallback=True,
+		invalid_output=True,
+		penalty_applied=INVALID_OUTPUT_PENALTY,
+		raw_text=text,
+		parse_error=f"{json_error_message}; {fallback_error_message}",
+	)
 
