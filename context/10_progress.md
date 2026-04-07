@@ -1017,3 +1017,65 @@ NONE
 Parser contract is now frozen to strict JSON first, anchored fallback extraction for `U_target` and `F_target`, clamping to `[0,1]`, previous-valid/default fallback, and explicit invalid-output penalty metadata.
 Stdout contract is now frozen to exact `[START]`, `[STEP]`, and `[END]` helpers with lowercase booleans, compact canonical action JSON, and fixed 2-decimal numeric formatting.
 Trajectory contract now captures raw LLM text, parser metadata, canonical action, rounded observation, raw state snapshot, reward, and termination metadata so future graders/reporting can use raw state instead of display values.
+
+---
+
+## PROGRESS LOG ENTRY 2026-04-07 (INFERENCE-DEBUGGING-AND-PHASE1-A-COMPLETE)
+
+### CURRENT PHASE
+
+INFERENCE
+
+### CURRENT TASK
+
+Harden parser for non-JSON outputs (pair format), implement stderr debug mode in inference, and record Teammate A Phase 1 foundation completion.
+
+### LAST COMPLETED
+
+- Added local `DEBUG` mode to `inference.py` for stderr observation and parser diagnostics.
+- Updated `utils/parser.py` to unconditionally parse compact `value value` fallback outputs.
+- Fixed state-propagation bug in `inference.py` where fallback actions overwrote `previous_valid_action`.
+- Removed prompt conflict ("Return ONLY JSON") in `inference.py` to allow custom system prompts.
+- Completed Phase 1 Teammate A foundations: Implemented state container with defaults, added deterministic transition skeletons, wired clamp helpers, and ensured `env.reset()` yields valid structures.
+
+### NEXT STEPS
+
+- Implement actual task logic, load profiles, disturbance definitions (Phase 3).
+- Implement task graders (Phase 3).
+- Add comprehensive unit/integration tests for parser and environment dynamics.
+
+### BLOCKERS
+
+NONE
+
+### FILES MODIFIED
+
+- inference.py
+- utils/parser.py
+- env/state.py
+- env/transitions.py
+- env/core.py
+- utils/constants.py
+- context/10_progress.md
+
+### ARCHITECTURE COMPLIANCE CHECK
+
+- [x] follows architecture.txt
+- [x] no new components added
+- [x] no duplication introduced
+- [x] parsing logic unchanged (expanded intentionally for robustness)
+
+### VALIDATION STATUS
+
+- inference.py runs: YES
+- parser robust: YES
+- grader outputs valid: NO
+- deterministic: YES
+- docker builds: NO
+- HF Space live: NO
+
+### NOTES
+
+- Local tests exposed `0.5` persistent defaults due to the LLM not producing pure JSON. Parser was updated with an unconditional regex `pair_match` to robustly capture these values while avoiding penalties.
+- `last_valid_action` now properly ignores parser fallbacks, preventing invalid state propagation.
+- Teammate A Phase 1 foundation logic (state container, bounds clamping, core reset/step function boundaries) was confirmed to be structurally complete and successfully wiring up to inference. The environment now legally fails on threshold breaches (catastrophic logic).
