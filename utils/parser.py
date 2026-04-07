@@ -20,59 +20,59 @@ _PAIR_PATTERN = re.compile(r'^\s*(' + _NUMBER_PATTERN + r')\s+(' + _NUMBER_PATTE
 
 
 def _clamp_unit_interval(value: Any, *, fallback: float) -> float:
-	"""Coerce to float and clamp to [0.0, 1.0]."""
-	try:
-		numeric_value = float(value)
-	except (TypeError, ValueError):
-		numeric_value = fallback
-	return max(0.0, min(1.0, numeric_value))
+    """Coerce to float and clamp to [0.0, 1.0]."""
+    try:
+        numeric_value = float(value)
+    except (TypeError, ValueError):
+        numeric_value = fallback
+    return max(0.0, min(1.0, numeric_value))
 
 
 def _from_mapping(payload: Mapping[str, Any], raw_text: str) -> ParsedAction:
-	"""Parse the expected JSON payload from a mapping."""
-	if "U_target" not in payload or "F_target" not in payload:
-		missing = []
-		if "U_target" not in payload:
-			missing.append("U_target")
-		if "F_target" not in payload:
-			missing.append("F_target")
-		raise ValueError(f"missing required keys: {', '.join(missing)}")
+    """Parse the expected JSON payload from a mapping."""
+    if "U_target" not in payload or "F_target" not in payload:
+        missing = []
+        if "U_target" not in payload:
+            missing.append("U_target")
+        if "F_target" not in payload:
+            missing.append("F_target")
+        raise ValueError(f"missing required keys: {', '.join(missing)}")
 
-	return ParsedAction(
-		u_target=_clamp_unit_interval(payload["U_target"], fallback=DEFAULT_U_TARGET),
-		f_target=_clamp_unit_interval(payload["F_target"], fallback=DEFAULT_F_TARGET),
-		source="json",
-		used_fallback=False,
-		invalid_output=False,
-		penalty_applied=0.0,
-		raw_text=raw_text,
-		parse_error=None,
-	)
+    return ParsedAction(
+        u_target=_clamp_unit_interval(payload["U_target"], fallback=DEFAULT_U_TARGET),
+        f_target=_clamp_unit_interval(payload["F_target"], fallback=DEFAULT_F_TARGET),
+        source="json",
+        used_fallback=False,
+        invalid_output=False,
+        penalty_applied=0.0,
+        raw_text=raw_text,
+        parse_error=None,
+    )
 
 
 def _anchored_extract(raw_text: str) -> ParsedAction:
-	"""Extract targets from anchored key/value pairs embedded in free text."""
-	u_match = _U_TARGET_PATTERN.search(raw_text)
-	f_match = _F_TARGET_PATTERN.search(raw_text)
-	if not u_match or not f_match:
-		raise ValueError("anchored extraction failed")
+    """Extract targets from anchored key/value pairs embedded in free text."""
+    u_match = _U_TARGET_PATTERN.search(raw_text)
+    f_match = _F_TARGET_PATTERN.search(raw_text)
+    if not u_match or not f_match:
+        raise ValueError("anchored extraction failed")
 
-	return ParsedAction(
-		u_target=_clamp_unit_interval(u_match.group(1), fallback=DEFAULT_U_TARGET),
-		f_target=_clamp_unit_interval(f_match.group(1), fallback=DEFAULT_F_TARGET),
-		source="fallback",
-		used_fallback=True,
-		invalid_output=True,
-		penalty_applied=INVALID_OUTPUT_PENALTY,
-		raw_text=raw_text,
-		parse_error="strict_json_failed",
-	)
+    return ParsedAction(
+        u_target=_clamp_unit_interval(u_match.group(1), fallback=DEFAULT_U_TARGET),
+        f_target=_clamp_unit_interval(f_match.group(1), fallback=DEFAULT_F_TARGET),
+        source="fallback",
+        used_fallback=True,
+        invalid_output=True,
+        penalty_applied=INVALID_OUTPUT_PENALTY,
+        raw_text=raw_text,
+        parse_error="strict_json_failed",
+    )
 
 
 def parse_llm_action(
-	raw_text: Optional[str],
-	previous_valid_action: Optional[Mapping[str, float]] = None,
-	default_action: Optional[Mapping[str, float]] = None,
+    raw_text: Optional[str],
+    previous_valid_action: Optional[Mapping[str, float]] = None,
+    default_action: Optional[Mapping[str, float]] = None,
 ) -> ParsedAction:
 	"""Parse untrusted model output into a canonical action without raising."""
 	text = (raw_text or "").strip()

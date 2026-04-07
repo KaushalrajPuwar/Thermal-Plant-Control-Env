@@ -11,6 +11,8 @@ import sys
 load_dotenv()
 
 from openai import OpenAI
+from dotenv import load_dotenv
+load_dotenv()
 
 from env.interface import ConcreteOpenEnvInterface
 from utils import constants as C
@@ -24,10 +26,11 @@ TEMPERATURE = 0.1
 MAX_TOKENS = 120
 SUCCESS_SCORE_THRESHOLD = 0.10
 DEFAULT_ACTION = {
-	"U_target": DEFAULT_U_TARGET,
-	"F_target": DEFAULT_F_TARGET,
+    "U_target": DEFAULT_U_TARGET,
+    "F_target": DEFAULT_F_TARGET,
 }
 
+# These will be injected by the judge's infrastructure
 HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_NAME = os.getenv("MODEL_NAME")
 API_BASE_URL = os.getenv("API_BASE_URL")
@@ -47,15 +50,15 @@ SYSTEM_PROMPT = textwrap.dedent(
 
 
 def _format_observation(observation: Dict[str, float]) -> str:
-	"""Render the rounded observation view for the model prompt."""
-	return ", ".join(f"{key}={value:.2f}" for key, value in observation.items())
+    """Render the rounded observation view for the model prompt."""
+    return ", ".join(f"{key}={value:.2f}" for key, value in observation.items())
 
 
 def build_user_prompt(
-	step: int,
-	observation: Dict[str, float],
-	last_reward: float,
-	history: List[str],
+    step: int,
+    observation: Dict[str, float],
+    last_reward: float,
+    history: List[str],
 ) -> str:
 	"""Build the user prompt using only rounded observation values."""
 	history_block = "\n".join(history[-4:]) if history else "None"
@@ -71,11 +74,11 @@ def build_user_prompt(
 
 
 def get_model_response(
-	client: OpenAI,
-	step: int,
-	observation: Dict[str, float],
-	last_reward: float,
-	history: List[str],
+    client: OpenAI,
+    step: int,
+    observation: Dict[str, float],
+    last_reward: float,
+    history: List[str],
 ) -> str:
 	"""Request the next action from the configured model."""
 	try:
@@ -260,4 +263,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-	main()
+    main()
