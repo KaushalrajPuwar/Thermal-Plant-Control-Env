@@ -47,10 +47,22 @@ DEFAULT_STATE: Dict[str, float] = {
 }
 
 # Episode controls.
-DEFAULT_MAX_STEPS = 20
+# Shorter episode length helps validation runs show signal quickly.
+DEFAULT_MAX_STEPS = 12
 DEFAULT_TASK_ID = "task1"
 DEFAULT_EPISODE_ID = 0
 OBSERVATION_DECIMALS = 2
+
+# External evaluator episode policy
+# External (evaluator/public) calls will use this fixed episode id unless
+# a valid developer token is supplied via the `X-DEV-TOKEN` header.
+DEFAULT_EXTERNAL_EPISODE_ID = 1
+EXTERNAL_EPISODE_DISPLAY_WIDTH = 3
+
+# Name of the environment variable that holds the developer reset token.
+# When set locally by developers, requests including the matching
+# `X-DEV-TOKEN` header are allowed to override episode ids.
+DEV_RESET_TOKEN_ENV = "DEV_RESET_TOKEN"
 
 # Regime-map task identifiers.
 TASK_CODE: Dict[str, int] = {

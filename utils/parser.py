@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import os
 from typing import Any, Mapping, Optional
 
 from utils.schemas import ParsedAction
@@ -15,6 +16,7 @@ DEFAULT_F_TARGET = 0.5
 _NUMBER_PATTERN = r"-?(?:\d+(?:\.\d*)?|\.\d+)"
 _U_TARGET_PATTERN = re.compile(r'"U_target"\s*:\s*(' + _NUMBER_PATTERN + r")")
 _F_TARGET_PATTERN = re.compile(r'"F_target"\s*:\s*(' + _NUMBER_PATTERN + r")")
+_PAIR_PATTERN = re.compile(r'^\s*(' + _NUMBER_PATTERN + r')\s+(' + _NUMBER_PATTERN + r')\s*$')
 
 
 def _clamp_unit_interval(value: Any, *, fallback: float) -> float:
@@ -91,6 +93,23 @@ def parse_llm_action(
 		return _anchored_extract(text)
 	except Exception as fallback_error:
 		fallback_error_message = str(fallback_error)
+
+	# Always try to match the compact "value value" pair format as a valid
+	# alternative to JSON, since the system prompt may be tuned for pair output.
+	pair_match = _PAIR_PATTERN.match(text)
+	if pair_match:
+		u_val = _clamp_unit_interval(pair_match.group(1), fallback=DEFAULT_U_TARGET)
+		f_val = _clamp_unit_interval(pair_match.group(2), fallback=DEFAULT_F_TARGET)
+		return ParsedAction(
+			u_target=u_val,
+			f_target=f_val,
+			source="fallback",
+			used_fallback=False,
+			invalid_output=False,
+			penalty_applied=0.0,
+			raw_text=text,
+			parse_error=None,
+		)
 
 	if previous_valid_action is not None:
 		return ParsedAction(

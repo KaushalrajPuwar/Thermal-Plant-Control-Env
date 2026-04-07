@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -9,10 +9,16 @@ from pydantic import BaseModel, Field
 # Request Models
 # =============================================================================
 class ResetRequest(BaseModel):
-    """Request body for the /reset endpoint."""
+    """Request body for the /reset endpoint.
+
+    Note: `episode_id` is accepted in the body for compatibility, but the
+    server will only honor it when a valid developer token is provided.
+    External evaluators should POST only `task_id` and will be served a
+    fixed external episode id.
+    """
 
     task_id: str = Field(..., description="The ID of the task to run, e.g., 'task1'.")
-    episode_id: int = Field(..., description="A unique integer for the episode to ensure determinism.")
+    episode_id: Optional[int] = Field(None, description="Optional episode id; honored only for developer callers with X-DEV-TOKEN.")
 
 
 class ActionRequest(BaseModel):

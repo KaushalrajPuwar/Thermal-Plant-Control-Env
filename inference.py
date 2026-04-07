@@ -5,17 +5,21 @@ from __future__ import annotations
 import os
 import textwrap
 from typing import Dict, List, Optional
+from dotenv import load_dotenv
+import sys
+
+load_dotenv()
 
 from openai import OpenAI
 
 from env.interface import ConcreteOpenEnvInterface
-from utils.constants import DEFAULT_TASK_ID
+from utils import constants as C
 from utils.logging_utils import canonical_action_string, log_end, log_start, log_step
 from utils.parser import DEFAULT_F_TARGET, DEFAULT_U_TARGET, parse_llm_action
 from utils.schemas import EpisodeTrajectory, StepLogRecord, TrajectoryStep, TrajectorySummary
 
 BENCHMARK = "thermal-plant-control"
-MAX_STEPS = 8
+
 TEMPERATURE = 0.1
 MAX_TOKENS = 120
 SUCCESS_SCORE_THRESHOLD = 0.10
@@ -27,14 +31,15 @@ DEFAULT_ACTION = {
 HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_NAME = os.getenv("MODEL_NAME")
 API_BASE_URL = os.getenv("API_BASE_URL")
-TASK_NAME = os.getenv("THERMAL_PLANT_TASK", DEFAULT_TASK_ID)
-EPISODE_ID = int(os.getenv("THERMAL_PLANT_EPISODE_ID", "0"))
+TASK_NAME = os.getenv("THERMAL_PLANT_TASK", C.DEFAULT_TASK_ID)
+EPISODE_ID = int(os.getenv("THERMAL_PLANT_EPISODE_ID", str(C.DEFAULT_EPISODE_ID)))
+DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
 SYSTEM_PROMPT = textwrap.dedent(
 	"""
 	You are controlling a thermal plant benchmark.
-	Return ONLY compact JSON with exactly these keys:
-	{"U_target": 0.50, "F_target": 0.50}
+	Return ONLY compact pair with exactly these keys and the value you see fit:
+	{"U_target": value, "F_target": value} but return only this format: value value. It is understood that first value is "U_target" and second value is "F_target"
 	Do not include markdown, explanation, prose, or extra keys.
 	Both values must be numeric targets in the range [0, 1].
 	"""
@@ -61,7 +66,6 @@ def build_user_prompt(
 		Last reward: {last_reward:.2f}
 		Recent history:
 		{history_block}
-		Return ONLY JSON for the next action.
 		"""
 	).strip()
 
@@ -85,7 +89,9 @@ def get_model_response(
 			max_tokens=MAX_TOKENS,
 		)
 		return (completion.choices[0].message.content or "").strip()
-	except Exception:
+	except Exception as exc:
+		if DEBUG:
+			print(f"[DEBUG] model call exception: {exc}", file=sys.stderr, flush=True)
 		return ""
 
 
@@ -94,7 +100,7 @@ def compute_normalized_score(rewards: List[float]) -> float:
 	if not rewards:
 		return 0.0
 	positive_reward = sum(max(0.0, reward) for reward in rewards)
-	return min(max(positive_reward / float(MAX_STEPS), 0.0), 1.0)
+	return min(max(positive_reward / float(C.DEFAULT_MAX_STEPS), 0.0), 1.0)
 
 
 def determine_termination_reason(loop_error: Optional[str], done: bool, steps_taken: int) -> str:
@@ -103,7 +109,7 @@ def determine_termination_reason(loop_error: Optional[str], done: bool, steps_ta
 		return "exception"
 	if done:
 		return "env_done"
-	if steps_taken >= MAX_STEPS:
+	if steps_taken >= C.DEFAULT_MAX_STEPS:
 		return "max_steps"
 	return "stopped"
 
@@ -111,7 +117,7 @@ def determine_termination_reason(loop_error: Optional[str], done: bool, steps_ta
 def main() -> None:
 	"""Run a full deterministic inference episode and always emit end logs."""
 	model_name_for_logs = MODEL_NAME or "unset"
-	env = ConcreteOpenEnvInterface(max_steps=MAX_STEPS)
+	env = ConcreteOpenEnvInterface(max_steps=C.DEFAULT_MAX_STEPS)
 	client: Optional[OpenAI] = None
 	last_valid_action: Optional[Dict[str, float]] = None
 	observation = env.reset(task_id=TASK_NAME, episode_id=EPISODE_ID)
@@ -130,8 +136,14 @@ def main() -> None:
 	try:
 		if HF_TOKEN and MODEL_NAME and API_BASE_URL:
 			client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+		if DEBUG and client is None:
+			print(
+				f"[DEBUG] OpenAI client configured? HF_TOKEN={bool(HF_TOKEN)} MODEL_NAME={bool(MODEL_NAME)} API_BASE_URL={bool(API_BASE_URL)}",
+				file=sys.stderr,
+				flush=True,
+			)
 
-		for step in range(1, MAX_STEPS + 1):
+		for step in range(1, C.DEFAULT_MAX_STEPS + 1):
 			raw_response = ""
 			if client is not None:
 				raw_response = get_model_response(
@@ -148,9 +160,38 @@ def main() -> None:
 				default_action=DEFAULT_ACTION,
 			)
 			canonical_action = parsed_action.to_action_dict()
+
+			if DEBUG:
+				print(file=sys.stderr)
+				print(
+					f"[DEBUG] step={step} prompt_observation={_format_observation(observation)}",
+					file=sys.stderr,
+					flush=True,
+				)
+				print(
+					f"[DEBUG] raw_llm_text={raw_response!r}",
+					file=sys.stderr,
+					flush=True,
+				)
+				print(
+					f"[DEBUG] parsed_action=u={parsed_action.u_target:.2f}, f={parsed_action.f_target:.2f}, "
+					f"source={parsed_action.source} invalid={str(parsed_action.invalid_output).lower()} "
+					f"penalty={parsed_action.penalty_applied:.2f}",
+					file=sys.stderr,
+					flush=True,
+				)
 			observation, env_reward, done, info = env.step(canonical_action)
 			total_reward = env_reward + parsed_action.penalty_applied
 			error = info.get("error")
+
+			if DEBUG:
+				print(
+					f"[DEBUG] step={step} post_observation={_format_observation(observation)} "
+					f"raw_state={env.get_state()} env_reward={env_reward:.2f} total_reward={total_reward:.2f} done={done} info={info}",
+					file=sys.stderr,
+					flush=True,
+				)
+				print(file=sys.stderr)
 
 			# Judge-facing stdout uses the canonical parsed/clamped action string.
 			action_string = canonical_action_string(
@@ -186,7 +227,12 @@ def main() -> None:
 			rewards.append(total_reward)
 			steps_taken = step
 			last_reward = total_reward
-			last_valid_action = canonical_action
+			# Only treat the canonical action as "last valid" when the parser
+			# indicated the model output was valid. This prevents default/fallback
+			# actions from becoming the previous_valid_action used by the parser
+			# on subsequent steps.
+			if not parsed_action.invalid_output:
+				last_valid_action = canonical_action
 			history.append(
 				f"step={step} action={action_string} reward={total_reward:.2f} "
 				f"source={parsed_action.source} invalid={str(parsed_action.invalid_output).lower()}"
