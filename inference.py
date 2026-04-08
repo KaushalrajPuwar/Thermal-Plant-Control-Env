@@ -282,6 +282,32 @@ def main() -> None:
 		loop_error = str(exc)
 	finally:
 		score = compute_normalized_score(rewards, max_steps)
+		# If grader registry is available, prefer grader-computed score (deterministic, uses raw internals)
+		try:
+			from graders.registry import grader_registry
+			registry = grader_registry()
+			grader_fn = registry.get(TASK_NAME)
+			if grader_fn is not None:
+				# grader functions return float score in [0,1]
+				try:
+					gscore = float(grader_fn(trajectory))
+					# clamp defensively
+					score = max(0.0, min(1.0, gscore))
+					if DEBUG:
+						from graders._metrics import compute_TE, compute_OS, compute_SV, compute_OC, compute_SL, compute_LP, compute_LS, compute_EMB, compute_RT, compute_RR, compute_failure_flag, compute_invalid_count
+						print(
+							f"[DEBUG] Grader Metrics: TE={compute_TE(trajectory):.3f} OS={compute_OS(trajectory):.3f} "
+							f"SV={compute_SV(trajectory):.3f} OC={compute_OC(trajectory):.3f} SL={compute_SL(trajectory):.3f} "
+							f"FF={compute_failure_flag(trajectory)} Invalids={compute_invalid_count(trajectory)}",
+							file=sys.stderr, flush=True
+						)
+				except Exception as e:
+					# Ignore grader errors and fall back to reward-based score
+					if DEBUG:
+						print(f"[DEBUG] Grader exception: {e}", file=sys.stderr, flush=True)
+		except Exception:
+			# missing registry or other import error -> keep reward-based score
+			pass
 		success = score >= SUCCESS_SCORE_THRESHOLD
 		termination_reason = determine_termination_reason(loop_error=loop_error, done=done, steps_taken=steps_taken, max_steps=max_steps)
 		trajectory.summary = TrajectorySummary(

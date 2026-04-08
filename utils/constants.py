@@ -264,4 +264,18 @@ PARSER_DEFAULT_U = 0.5
 PARSER_DEFAULT_F = 0.5
 INCLUDE_PARSE_ERROR_IN_STEP = True
 
+# Grader normalization scales and penalties
+METRIC_NORM_SCALES = {
+	"TE": 0.5,
+	"OS": 0.5,
+	"SV": 0.5,
+	"OC": 0.5,
+	"SL": 0.5,
+	"LP": 0.5,
+	"LS": 0.5,
+	"RR": 0.5,
+}
+
+INVALID_ACTION_PENALTY = 0.2
+
 
