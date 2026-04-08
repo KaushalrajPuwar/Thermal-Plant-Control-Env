@@ -68,10 +68,10 @@ python inference.py
 ```
 
 ## Baseline Performance Scores
-Baseline testing via the heuristic smoke harness and zero-shot Llama-3.3-70B reveals the following baseline scores (normalized `[0.0, 1.0]`):
-- **task1**: ~0.85
-- **task2**: ~0.65
-- **task3**: ~0.40
-- **task4**: ~0.25
+Baseline testing via the deterministic heuristic smoke harness reveals the following baseline scores (normalized `[0.0, 1.0]`):
+- **task1**: ~0.94
+- **task2**: ~0.83
+- **task3**: ~0.76
+- **task4**: ~0.65
 
 *The environment is fully OpenEnv-compliant, deployed on Hugging Face Spaces, and strictly containerized.*
