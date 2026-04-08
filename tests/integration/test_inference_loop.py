@@ -20,6 +20,7 @@ MOCK_RESPONSES = [
 
 def mock_get_model_response(
     client: MagicMock,
+    task_description: str,
     step: int,
     observation: Dict[str, float],
     last_reward: float,
@@ -35,7 +36,9 @@ def mock_inference_env(monkeypatch):
     monkeypatch.setenv("MODEL_NAME", "fake_model")
     monkeypatch.setenv("API_BASE_URL", "http://fake.api")
     monkeypatch.setenv("THERMAL_PLANT_EPISODE_ID", "1")
-    monkeypatch.setattr(inference.C, "DEFAULT_MAX_STEPS", 5) # Short episode
+    # Tell the default task it's a short episode
+    import tasks.task2
+    monkeypatch.setattr(tasks.task2.Task2, "max_steps", 5)
     yield
 
 def test_inference_main_prints_exact_stdout_format(mock_inference_env, monkeypatch):

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from env.interface import ConcreteOpenEnvInterface
+from tasks.registry import get_task
 from utils import constants as C
 from utils.logging_utils import canonical_action_string, log_end, log_start, log_step
 from utils.parser import parse_llm_action
@@ -28,18 +29,36 @@ DEFAULT_ACTION = {
 }
 
 # These will be injected by the judge's infrastructure
-HF_TOKEN = os.getenv("HF_TOKEN")
-MODEL_NAME = os.getenv("MODEL_NAME")
-API_BASE_URL = os.getenv("API_BASE_URL")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 TASK_NAME = os.getenv("THERMAL_PLANT_TASK", C.DEFAULT_TASK_ID)
 EPISODE_ID = int(os.getenv("THERMAL_PLANT_EPISODE_ID", str(C.DEFAULT_EPISODE_ID)))
 DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
+
 SYSTEM_PROMPT = textwrap.dedent(
 	"""
-	You are controlling a thermal plant benchmark. 
-	Return ONLY a compact numeric pair separated by a space representing your chosen `U_target` and `F_target` (e.g. "0.60 0.50").
-	Both targets must be strictly in the range [0, 1]. Do not output JSON, explanations, or prose.
+	You are controlling a thermal plant benchmark.
+	Your objective is to track the required load (L) with your power output (P) while keeping temperature (T) and pressure (Pr) safely below 1.0 to avoid stress (S).
+	
+	State Variables (Inputs):
+	P : Current Power output (track this to L)
+	L : Required Load
+	T : Temperature (keep safely below 1.0)
+	Pr: Pressure (keep safely below 1.0)
+	S : System Stress
+	D : Plant Degradation
+	U : Current Control Valve position (inertia-delayed power target)
+	F : Current Cooling Valve position (inertia-delayed cooling target)
+
+	Action Space (Your Outputs):
+	- U_target: Desired power level [0, 1]. Drives the power valve U.
+	- F_target: Desired cooling level [0, 1]. Drives the cooling valve F.
+
+	Note that your target controls (U_target, F_target) are subject to physical lag. They slowly move the actual valves (U, F) towards your targets. Anticipate delayed responses and system inertia.
+	
+	Return ONLY a compact numeric pair separated by a space representing your chosen `U_target` and `F_target` (e.g. "0.60 0.50"). Do not output JSON, explanations, or prose.
 	"""
 ).strip()
 
@@ -50,6 +69,7 @@ def _format_observation(observation: Dict[str, float]) -> str:
 
 
 def build_user_prompt(
+    task_description: str,
     step: int,
     observation: Dict[str, float],
     last_reward: float,
@@ -59,6 +79,8 @@ def build_user_prompt(
 	history_block = "\n".join(history[-4:]) if history else "None"
 	return textwrap.dedent(
 		f"""
+		Task Objective: {task_description}
+
 		Step: {step}
 		Observation: {_format_observation(observation)}
 		Last reward: {last_reward:.2f}
@@ -70,6 +92,7 @@ def build_user_prompt(
 
 def get_model_response(
     client: OpenAI,
+    task_description: str,
     step: int,
     observation: Dict[str, float],
     last_reward: float,
@@ -81,7 +104,7 @@ def get_model_response(
 			model=MODEL_NAME,
 			messages=[
 				{"role": "system", "content": SYSTEM_PROMPT},
-				{"role": "user", "content": build_user_prompt(step, observation, last_reward, history)},
+				{"role": "user", "content": build_user_prompt(task_description, step, observation, last_reward, history)},
 			],
 			temperature=TEMPERATURE,
 			max_tokens=MAX_TOKENS,
@@ -93,21 +116,21 @@ def get_model_response(
 		return ""
 
 
-def compute_normalized_score(rewards: List[float]) -> float:
+def compute_normalized_score(rewards: List[float], max_steps: int) -> float:
 	"""Convert collected step rewards into a normalized score in [0, 1]."""
 	if not rewards:
 		return 0.0
 	positive_reward = sum(max(0.0, reward) for reward in rewards)
-	return min(max(positive_reward / float(C.DEFAULT_MAX_STEPS), 0.0), 1.0)
+	return min(max(positive_reward / float(max_steps), 0.0), 1.0)
 
 
-def determine_termination_reason(loop_error: Optional[str], done: bool, steps_taken: int) -> str:
+def determine_termination_reason(loop_error: Optional[str], done: bool, steps_taken: int, max_steps: int) -> str:
 	"""Return a stable end-of-episode reason."""
 	if loop_error:
 		return "exception"
 	if done:
 		return "env_done"
-	if steps_taken >= C.DEFAULT_MAX_STEPS:
+	if steps_taken >= max_steps:
 		return "max_steps"
 	return "stopped"
 
@@ -115,10 +138,11 @@ def determine_termination_reason(loop_error: Optional[str], done: bool, steps_ta
 def main() -> None:
 	"""Run a full deterministic inference episode and always emit end logs."""
 	model_name_for_logs = MODEL_NAME or "unset"
-	env = ConcreteOpenEnvInterface(max_steps=C.DEFAULT_MAX_STEPS)
+	env = ConcreteOpenEnvInterface()
 	client: Optional[OpenAI] = None
 	last_valid_action: Optional[Dict[str, float]] = None
 	observation = env.reset(task_id=TASK_NAME, episode_id=EPISODE_ID)
+	max_steps = getattr(env._env, "max_steps", 12) if hasattr(env, "_env") else 12
 	history: List[str] = []
 	rewards: List[float] = []
 	score = 0.0
@@ -132,6 +156,12 @@ def main() -> None:
 	log_start(task=TASK_NAME, env=BENCHMARK, model=model_name_for_logs)
 
 	try:
+		task_obj = get_task(TASK_NAME)
+		task_description = getattr(task_obj, "description", "Optimal Thermal Plant Control")
+	except Exception:
+		task_description = "Optimal Thermal Plant Control"
+
+	try:
 		if HF_TOKEN and MODEL_NAME and API_BASE_URL:
 			client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 		if DEBUG and client is None:
@@ -141,11 +171,12 @@ def main() -> None:
 				flush=True,
 			)
 
-		for step in range(1, C.DEFAULT_MAX_STEPS + 1):
+		for step in range(1, max_steps + 1):
 			raw_response = ""
 			if client is not None:
 				raw_response = get_model_response(
 					client=client,
+					task_description=task_description,
 					step=step,
 					observation=observation,
 					last_reward=last_reward,
@@ -250,9 +281,9 @@ def main() -> None:
 	except Exception as exc:
 		loop_error = str(exc)
 	finally:
-		score = compute_normalized_score(rewards)
+		score = compute_normalized_score(rewards, max_steps)
 		success = score >= SUCCESS_SCORE_THRESHOLD
-		termination_reason = determine_termination_reason(loop_error=loop_error, done=done, steps_taken=steps_taken)
+		termination_reason = determine_termination_reason(loop_error=loop_error, done=done, steps_taken=steps_taken, max_steps=max_steps)
 		trajectory.summary = TrajectorySummary(
 			task=TASK_NAME,
 			benchmark=BENCHMARK,
@@ -267,4 +298,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+	if HF_TOKEN is None:
+		raise ValueError("HF_TOKEN environment variable is required")
+	main()

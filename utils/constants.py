@@ -47,16 +47,15 @@ DEFAULT_STATE: Dict[str, float] = {
 }
 
 # Episode controls.
-# Shorter episode length helps validation runs show signal quickly.
-DEFAULT_MAX_STEPS = 12
+# Tasks dictate default episode lengths. Max steps are defined in the specific Task subclasses.
 DEFAULT_TASK_ID = "task1"
-DEFAULT_EPISODE_ID = 0
+DEFAULT_EPISODE_ID = 143
 OBSERVATION_DECIMALS = 2
 
 # External evaluator episode policy
 # External (evaluator/public) calls will use this fixed episode id unless
 # a valid developer token is supplied via the `X-DEV-TOKEN` header.
-DEFAULT_EXTERNAL_EPISODE_ID = 1
+DEFAULT_EXTERNAL_EPISODE_ID = 143
 EXTERNAL_EPISODE_DISPLAY_WIDTH = 3
 
 # Name of the environment variable that holds the developer reset token.
@@ -110,75 +109,75 @@ INIT_T_F_GAIN = 0.30
 TASK_STARTUP_PROFILES: Dict[str, Dict[str, float]] = {
 	"task1": {
 		"aL": 0.60,
-		"sL": 0.10,
-		"aD": 0.04,
-		"sD": 0.05,
-		"aT": 0.12,
-		"sT": 0.10,
-		"aM": 0.82,
-		"sM": 0.08,
-		"gap_scale": 0.05,
-		"d_max": 0.15,
-		"s_base": 0.10,
-		"s_gain": 0.14,
-		"f_bias": 0.16,
-		"t_task_bias": -0.06,
-		"soft_t_cap": 0.78,
-		"soft_pr_cap": 0.84,
+		"sL": 0.00, # Fixed load start to match constant task target
+		"aD": 0.02,
+		"sD": 0.03,
+		"aT": 0.08,
+		"sT": 0.06,
+		"aM": 0.88,
+		"sM": 0.06,
+		"gap_scale": 0.22,
+		"d_max": 0.08,
+		"s_base": 0.05,
+		"s_gain": 0.08,
+		"f_bias": 0.20,
+		"t_task_bias": -0.08,
+		"soft_t_cap": 0.82,
+		"soft_pr_cap": 0.86,
 	},
 	"task2": {
-		"aL": 0.50,
-		"sL": 0.12,
-		"aD": 0.05,
-		"sD": 0.06,
-		"aT": 0.18,
-		"sT": 0.14,
-		"aM": 0.70,
-		"sM": 0.10,
-		"gap_scale": 0.08,
+		"aL": 0.50, # Set to exact step 1 load sequence baseline
+		"sL": 0.00,
+		"aD": 0.04,
+		"sD": 0.04,
+		"aT": 0.14,
+		"sT": 0.10,
+		"aM": 0.78,
+		"sM": 0.08,
+		"gap_scale": 0.16,
 		"d_max": 0.10,
-		"s_base": 0.00,
-		"s_gain": 0.18,
-		"f_bias": 0.18,
-		"t_task_bias": -0.02,
-		"soft_t_cap": 0.82,
+		"s_base": 0.03,
+		"s_gain": 0.12,
+		"f_bias": 0.22,
+		"t_task_bias": -0.04,
+		"soft_t_cap": 0.84,
 		"soft_pr_cap": 0.88,
 	},
 	"task3": {
 		"aL": 0.70,
-		"sL": 0.10,
-		"aD": 0.12,
-		"sD": 0.10,
-		"aT": 0.48,
-		"sT": 0.18,
-		"aM": 0.46,
-		"sM": 0.10,
-		"gap_scale": 0.07,
-		"d_max": 0.22,
-		"s_base": 0.08,
-		"s_gain": 0.30,
-		"f_bias": 0.24,
-		"t_task_bias": 0.05,
-		"soft_t_cap": 0.92,
-		"soft_pr_cap": 0.98,
+		"sL": 0.00,
+		"aD": 0.08,
+		"sD": 0.06,
+		"aT": 0.72,
+		"sT": 0.12,
+		"aM": 0.60,
+		"sM": 0.08,
+		"gap_scale": 0.05, # Reduce gap further, so power is already high and generating heat
+		"d_max": 0.18,
+		"s_base": 0.20,
+		"s_gain": 0.18,
+		"f_bias": 0.12,
+		"t_task_bias": 0.35, # Extra direct heat
+		"soft_t_cap": 1.05,  # Prevent environment from rescuing the initial state
+		"soft_pr_cap": 1.10,
 	},
 	"task4": {
 		"aL": 0.60,
-		"sL": 0.10,
-		"aD": 0.34,
-		"sD": 0.14,
-		"aT": 0.34,
-		"sT": 0.16,
-		"aM": 0.55,
-		"sM": 0.10,
-		"gap_scale": 0.06,
-		"d_max": 0.45,
-		"s_base": 0.03,
-		"s_gain": 0.22,
-		"f_bias": 0.30,
-		"t_task_bias": 0.04,
-		"soft_t_cap": 0.88,
-		"soft_pr_cap": 0.94,
+		"sL": 0.00,
+		"aD": 0.18,
+		"sD": 0.08,
+		"aT": 0.22,
+		"sT": 0.10,
+		"aM": 0.68,
+		"sM": 0.08,
+		"gap_scale": 0.14,
+		"d_max": 0.32,
+		"s_base": 0.05,
+		"s_gain": 0.14,
+		"f_bias": 0.32,
+		"t_task_bias": 0.02,
+		"soft_t_cap": 0.85,
+		"soft_pr_cap": 0.89,
 	},
 }
 

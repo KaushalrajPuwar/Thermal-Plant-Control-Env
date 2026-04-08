@@ -12,14 +12,16 @@ from env.state import ThermalPlantState
 from env.transitions import (
 	build_coherent_initial_state,
 	integration_step,
+	clamp_state,
 )
 from utils.constants import (
 	ACTION_F_TARGET,
 	ACTION_U_TARGET,
 	DEFAULT_EPISODE_ID,
-	DEFAULT_MAX_STEPS,
 	DEFAULT_TASK_ID,
 )
+from tasks.config import ThermalPlantTask
+from tasks.registry import get_task
 
 
 class ThermalPlantEnv:
@@ -39,13 +41,23 @@ class ThermalPlantEnv:
 
 	def __init__(
 		self,
-		max_steps: int = DEFAULT_MAX_STEPS,
+		max_steps: Optional[int] = None,
 		task_id: str = DEFAULT_TASK_ID,
 		episode_id: int = DEFAULT_EPISODE_ID,
 	) -> None:
-		self.max_steps = max_steps
 		self.task_id = task_id
 		self.episode_id = int(episode_id)
+		# Initialize task
+		try:
+			self._task: ThermalPlantTask = get_task(self.task_id)
+			self.max_steps = max_steps if max_steps is not None else self._task.max_steps
+		except ValueError as exc:
+			logging.warning("__init__(): unknown task_id '%s' - falling back to default '%s' (%s)", self.task_id, DEFAULT_TASK_ID, exc)
+			self.task_id = DEFAULT_TASK_ID
+			self._task = get_task(self.task_id)
+			self.max_steps = max_steps if max_steps is not None else self._task.max_steps
+
+		self._task.reset(self.episode_id)
 		self._state = build_coherent_initial_state(task_id=self.task_id, episode_id=self.episode_id)
 		self._step_count = 0
 
@@ -60,12 +72,18 @@ class ThermalPlantEnv:
 		# fall back to the default task id and log a warning so validator runs
 		# continue (robust behaviour for external callers).
 		try:
+			self._task = get_task(self.task_id)
+			self.max_steps = getattr(self._task, "max_steps", self.max_steps)
 			self._state = build_coherent_initial_state(task_id=self.task_id, episode_id=self.episode_id)
 		except ValueError as exc:
 			logging.warning("reset(): unknown task_id '%s' - falling back to default '%s' (%s)", self.task_id, DEFAULT_TASK_ID, exc)
 			self.task_id = DEFAULT_TASK_ID
+			self._task = get_task(self.task_id)
+			self.max_steps = getattr(self._task, "max_steps", self.max_steps)
 			self._state = build_coherent_initial_state(task_id=self.task_id, episode_id=self.episode_id)
+		
 		self._step_count = 0
+		self._task.reset(self.episode_id)
 		return self._state.to_observation()
 
 	def state(self) -> Dict[str, float]:
@@ -94,6 +112,16 @@ class ThermalPlantEnv:
 			error_msg = "invalid_action_payload"
 			action = {}
 
+		self._step_count += 1
+		
+		# Apply task disturbances before physics
+		deltas, task_event = self._task.apply_disturbance(self._state, self._step_count)
+		if deltas:
+			for k, v in deltas.items():
+				if hasattr(self._state, k):
+					setattr(self._state, k, getattr(self._state, k) + v)
+			self._state = clamp_state(self._state)
+
 		next_state, reward, done_catastrophic, transition_info = integration_step(self._state, action)
 		
 		if invalid_action:
@@ -102,14 +130,15 @@ class ThermalPlantEnv:
 				transition_info["error"] = error_msg
 		
 		self._state = next_state
-		self._step_count += 1
 		
-		done = done_catastrophic or self._step_count >= self.max_steps
+		task_done = hasattr(self._task, "is_completed") and self._task.is_completed(self._state, self._step_count)
+		done = done_catastrophic or task_done or self._step_count >= self.max_steps
 		
 		info: Dict[str, Any] = {
 			"error": transition_info.get("error"),
 			"step_count": self._step_count,
 			"invalid_action": transition_info.get("invalid_action", False),
-			"invalid_action_penalty": transition_info.get("invalid_action_penalty", 0.0)
+			"invalid_action_penalty": transition_info.get("invalid_action_penalty", 0.0),
+			"task_event": task_event
 		}
 		return self._state.to_observation(), float(reward), bool(done), info

@@ -20,7 +20,8 @@ def mock_env_vars():
 
 def test_inference_main_with_malformed_outputs(capsys, monkeypatch, mock_env_vars):
     # Mock settings to create a short run
-    monkeypatch.setattr(inference.C, "DEFAULT_MAX_STEPS", 4)
+    import tasks.task2
+    monkeypatch.setattr(tasks.task2.Task2, "max_steps", 4)
     monkeypatch.setattr(inference.C, "INCLUDE_PARSE_ERROR_IN_STEP", True)
     
     # We will simulate exactly 4 steps of LLM responses:

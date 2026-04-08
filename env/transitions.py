@@ -218,7 +218,24 @@ def build_coherent_initial_state(task_id: str, episode_id: int) -> ThermalPlantS
 		S_BOUNDS[0],
 		S_BOUNDS[1],
 	)
-	power = clamp(load + regime["G_gap"] - P_STRESS_DRAG * stress, P_BOUNDS[0], P_BOUNDS[1])
+	
+	# Compute gap, allowing it to vary around load for balanced control challenge
+	# The gap can be positive or negative, creating both "reduce" and "increase" scenarios
+	g_gap = regime["G_gap"]
+	
+	# Clamp stress slightly if excessive to prevent artificial P reduction
+	if stress > 0.3:
+		stress = clamp(stress * 0.85, S_BOUNDS[0], S_BOUNDS[1])
+	
+	power = clamp(load + g_gap - P_STRESS_DRAG * stress, P_BOUNDS[0], P_BOUNDS[1])
+	
+	# Ensure observable gap: |P - L| >= 0.04 so LLM sees clear control objective
+	gap_magnitude = abs(power - load)
+	if gap_magnitude < 0.04:
+		# If gap too small, nudge power away from load in direction determined by seed
+		direction = 1.0 if (g_gap >= 0) else -1.0
+		power = clamp(load + direction * 0.08, P_BOUNDS[0], P_BOUNDS[1])
+	
 	control, cooling = _solve_controls(
 		load=load,
 		power=power,
@@ -295,8 +312,8 @@ def integration_step(state: ThermalPlantState, action: Dict[str, float]) -> Tupl
 	def der(x_vec):
 		P, T, Pr, S, D = x_vec
 		
-		# Power: dP/dt = P_GAIN * U * (1 - P/1.0) - P_LOAD_COEF*(P - L) - P_DEG_COEF*P*D
-		dP = C.P_GAIN * next_u * (1.0 - P) - C.P_LOAD_COEF * (P - state.L) - C.P_DEG_COEF * P * D
+		# Power: target tracking for U, minus load drag, minus degradation drag
+		dP = C.P_GAIN * (next_u - P) - C.P_LOAD_COEF * (P - state.L) - C.P_DEG_COEF * P * D
 		
 		# Temperature: dT/dt = a*P^1.1 - b*F^1.05 - c*(T - T_env) - e*D*T
 		# T_env is 0.0 effectively
@@ -372,20 +389,23 @@ def check_catastrophic(state: ThermalPlantState) -> Tuple[bool, str]:
 
 
 def compute_reward(prev_state: ThermalPlantState, state: ThermalPlantState, delta_u: float) -> float:
-	# R_track
-	r_track = -abs(state.P - state.L)
+	# Tracking reward: smooth linear decay as error increases
+	# At error=0: r_track=1.0, at error=0.2: r_track=0.0, at error=0.4: r_track=-1.0
+	# This avoids the cliff discontinuity and provides smooth gradient for learning
+	tracking_error = abs(state.P - state.L)
+	r_track = 1.0 - tracking_error / 0.2  # Linear decay over 0.2 error window
 	
-	# R_safety
-	r_safety = C.SAFETY_PENALTY_COEF * max(0.0, state.T - C.SOFT_T) + C.SAFETY_PENALTY_COEF * max(0.0, state.Pr - C.SOFT_PR)
+	# Safety penalty: only penalize when approaching limits
+	safety_violation = max(0.0, state.T - C.SOFT_T) + max(0.0, state.Pr - C.SOFT_PR)
+	r_safety = C.SAFETY_PENALTY_COEF * safety_violation
 	
-	# R_stability
-	r_stability = (delta_u ** 2)
+	# Stability penalty: penalize excessive control changes
+	r_stability = C.OSCILLATION_PENALTY_COEF * (delta_u ** 2)
 	
-	# R_eff
-	r_eff = state.U**2 + state.F**2
+	# Stress penalty: penalize high stress accumulation
+	r_stress = C.STRESS_PENALTY_COEF * state.S if state.S > 0.1 else 0.0
 	
-	# R_invalid is applied outside this by parsing wrapper, but can be added in env core if needed.
-	
-	reward = C.W_TRACK * r_track - C.W_SAFETY * r_safety - C.W_STABILITY * r_stability - C.W_EFF * r_eff
+	# Combine: tracking reward + safety/stress penalty - control oscillation
+	reward = C.W_TRACK * r_track - C.W_SAFETY * r_safety - C.W_STABILITY * r_stability - 0.2 * r_stress
 	return clamp(reward, -10.0, 10.0)
 
