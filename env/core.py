@@ -11,16 +11,7 @@ import logging
 from env.state import ThermalPlantState
 from env.transitions import (
 	build_coherent_initial_state,
-	clamp_action_targets,
-	clamp_state,
-	compute_reward,
-	is_catastrophic,
-	update_actuators,
-	update_degradation,
-	update_power,
-	update_pressure,
-	update_stress,
-	update_temperature,
+	integration_step,
 )
 from utils.constants import (
 	ACTION_F_TARGET,
@@ -83,46 +74,42 @@ class ThermalPlantEnv:
 
 	def step(self, action: Dict[str, Any]) -> Tuple[Dict[str, float], float, bool, Dict[str, Any]]:
 		"""Advance one deterministic time step using the action dictionary."""
-		prev_state = ThermalPlantState(**self._state.to_raw_dict())
 		invalid_action = False
 		error_msg: Optional[str] = None
-
+		
+		# Validation
+		if not isinstance(action, dict):
+			invalid_action = True
+			error_msg = "action_not_dict"
+			action = {}
+		
 		try:
-			raw_u_target = action.get(ACTION_U_TARGET, prev_state.U)
-			raw_f_target = action.get(ACTION_F_TARGET, prev_state.F)
-			u_target, f_target = clamp_action_targets(raw_u_target, raw_f_target)
-		except Exception:
+			# Just explicitly check if things are castable to float
+			if ACTION_U_TARGET in action:
+				float(action[ACTION_U_TARGET])
+			if ACTION_F_TARGET in action:
+				float(action[ACTION_F_TARGET])
+		except (ValueError, TypeError):
 			invalid_action = True
 			error_msg = "invalid_action_payload"
-			u_target, f_target = prev_state.U, prev_state.F
+			action = {}
 
-		# Transition order is explicit and deterministic.
-		new_u, new_f = update_actuators(prev_state.U, prev_state.F, u_target, f_target)
-		new_p = update_power(prev_state.P, new_u)
-		new_d = update_degradation(prev_state.D, u_target, prev_state.U)
-		new_t = update_temperature(prev_state.T, new_p, new_f, new_d)
-		new_pr = update_pressure(prev_state.Pr, new_t, new_p)
-		new_s = update_stress(prev_state.S, new_t)
-
-		self._state = ThermalPlantState(
-			P=new_p,
-			L=prev_state.L,
-			T=new_t,
-			Pr=new_pr,
-			U=new_u,
-			F=new_f,
-			S=new_s,
-			D=new_d,
-		)
-		self._state = clamp_state(self._state)
+		next_state, reward, done_catastrophic, transition_info = integration_step(self._state, action)
+		
+		if invalid_action:
+			transition_info["invalid_action"] = True
+			if not transition_info.get("error"):
+				transition_info["error"] = error_msg
+		
+		self._state = next_state
 		self._step_count += 1
-
-		reward = compute_reward(self._state, prev_u=prev_state.U)
-		done = is_catastrophic(self._state) or self._step_count >= self.max_steps
-
+		
+		done = done_catastrophic or self._step_count >= self.max_steps
+		
 		info: Dict[str, Any] = {
-			"error": error_msg,
+			"error": transition_info.get("error"),
 			"step_count": self._step_count,
-			"invalid_action": invalid_action,
+			"invalid_action": transition_info.get("invalid_action", False),
+			"invalid_action_penalty": transition_info.get("invalid_action_penalty", 0.0)
 		}
 		return self._state.to_observation(), float(reward), bool(done), info

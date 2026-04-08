@@ -8,15 +8,14 @@ import os
 from typing import Any, Mapping, Optional
 
 from utils.schemas import ParsedAction
+from utils.constants import PARSER_DEFAULT_U, PARSER_DEFAULT_F
 
 INVALID_OUTPUT_PENALTY = -1.0
-DEFAULT_U_TARGET = 0.5
-DEFAULT_F_TARGET = 0.5
 
 _NUMBER_PATTERN = r"-?(?:\d+(?:\.\d*)?|\.\d+)"
-_U_TARGET_PATTERN = re.compile(r'"U_target"\s*:\s*(' + _NUMBER_PATTERN + r")")
-_F_TARGET_PATTERN = re.compile(r'"F_target"\s*:\s*(' + _NUMBER_PATTERN + r")")
-_PAIR_PATTERN = re.compile(r'^\s*(' + _NUMBER_PATTERN + r')\s+(' + _NUMBER_PATTERN + r')\s*$')
+_U_TARGET_PATTERN = re.compile(r'(?i)["\']?u_target["\']?(?:\s*[:=]\s*|\s+)(' + _NUMBER_PATTERN + r')')
+_F_TARGET_PATTERN = re.compile(r'(?i)["\']?f_target["\']?(?:\s*[:=]\s*|\s+)(' + _NUMBER_PATTERN + r')')
+_PAIR_PATTERN = re.compile(r'^\s*(' + _NUMBER_PATTERN + r')[\s,;]+(' + _NUMBER_PATTERN + r')\s*$')
 
 
 def _clamp_unit_interval(value: Any, *, fallback: float) -> float:
@@ -30,17 +29,21 @@ def _clamp_unit_interval(value: Any, *, fallback: float) -> float:
 
 def _from_mapping(payload: Mapping[str, Any], raw_text: str) -> ParsedAction:
     """Parse the expected JSON payload from a mapping."""
-    if "U_target" not in payload or "F_target" not in payload:
+    # Find keys ignoring case
+    u_key = next((k for k in payload.keys() if k.lower() == "u_target"), "U_target")
+    f_key = next((k for k in payload.keys() if k.lower() == "f_target"), "F_target")
+    
+    if u_key not in payload or f_key not in payload:
         missing = []
-        if "U_target" not in payload:
+        if u_key not in payload:
             missing.append("U_target")
-        if "F_target" not in payload:
+        if f_key not in payload:
             missing.append("F_target")
         raise ValueError(f"missing required keys: {', '.join(missing)}")
 
     return ParsedAction(
-        u_target=_clamp_unit_interval(payload["U_target"], fallback=DEFAULT_U_TARGET),
-        f_target=_clamp_unit_interval(payload["F_target"], fallback=DEFAULT_F_TARGET),
+        u_target=_clamp_unit_interval(payload[u_key], fallback=PARSER_DEFAULT_U),
+        f_target=_clamp_unit_interval(payload[f_key], fallback=PARSER_DEFAULT_F),
         source="json",
         used_fallback=False,
         invalid_output=False,
@@ -58,8 +61,8 @@ def _anchored_extract(raw_text: str) -> ParsedAction:
         raise ValueError("anchored extraction failed")
 
     return ParsedAction(
-        u_target=_clamp_unit_interval(u_match.group(1), fallback=DEFAULT_U_TARGET),
-        f_target=_clamp_unit_interval(f_match.group(1), fallback=DEFAULT_F_TARGET),
+        u_target=_clamp_unit_interval(u_match.group(1), fallback=PARSER_DEFAULT_U),
+        f_target=_clamp_unit_interval(f_match.group(1), fallback=PARSER_DEFAULT_F),
         source="fallback",
         used_fallback=True,
         invalid_output=True,
@@ -77,8 +80,8 @@ def parse_llm_action(
 	"""Parse untrusted model output into a canonical action without raising."""
 	text = (raw_text or "").strip()
 	fallback_default = default_action or {
-		"U_target": DEFAULT_U_TARGET,
-		"F_target": DEFAULT_F_TARGET,
+		"U_target": PARSER_DEFAULT_U,
+		"F_target": PARSER_DEFAULT_F,
 	}
 
 	try:
@@ -98,8 +101,8 @@ def parse_llm_action(
 	# alternative to JSON, since the system prompt may be tuned for pair output.
 	pair_match = _PAIR_PATTERN.match(text)
 	if pair_match:
-		u_val = _clamp_unit_interval(pair_match.group(1), fallback=DEFAULT_U_TARGET)
-		f_val = _clamp_unit_interval(pair_match.group(2), fallback=DEFAULT_F_TARGET)
+		u_val = _clamp_unit_interval(pair_match.group(1), fallback=PARSER_DEFAULT_U)
+		f_val = _clamp_unit_interval(pair_match.group(2), fallback=PARSER_DEFAULT_F)
 		return ParsedAction(
 			u_target=u_val,
 			f_target=f_val,
@@ -113,8 +116,8 @@ def parse_llm_action(
 
 	if previous_valid_action is not None:
 		return ParsedAction(
-			u_target=_clamp_unit_interval(previous_valid_action.get("U_target"), fallback=DEFAULT_U_TARGET),
-			f_target=_clamp_unit_interval(previous_valid_action.get("F_target"), fallback=DEFAULT_F_TARGET),
+			u_target=_clamp_unit_interval(previous_valid_action.get("U_target"), fallback=PARSER_DEFAULT_U),
+			f_target=_clamp_unit_interval(previous_valid_action.get("F_target"), fallback=PARSER_DEFAULT_F),
 			source="previous_valid",
 			used_fallback=True,
 			invalid_output=True,
@@ -124,8 +127,8 @@ def parse_llm_action(
 		)
 
 	return ParsedAction(
-		u_target=_clamp_unit_interval(fallback_default.get("U_target"), fallback=DEFAULT_U_TARGET),
-		f_target=_clamp_unit_interval(fallback_default.get("F_target"), fallback=DEFAULT_F_TARGET),
+		u_target=_clamp_unit_interval(fallback_default.get("U_target"), fallback=PARSER_DEFAULT_U),
+		f_target=_clamp_unit_interval(fallback_default.get("F_target"), fallback=PARSER_DEFAULT_F),
 		source="default",
 		used_fallback=True,
 		invalid_output=True,

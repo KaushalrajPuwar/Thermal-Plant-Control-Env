@@ -48,7 +48,7 @@ DEFAULT_STATE: Dict[str, float] = {
 
 # Episode controls.
 # Shorter episode length helps validation runs show signal quickly.
-DEFAULT_MAX_STEPS = 12
+DEFAULT_MAX_STEPS = 20
 DEFAULT_TASK_ID = "task1"
 DEFAULT_EPISODE_ID = 0
 OBSERVATION_DECIMALS = 2
@@ -118,8 +118,8 @@ TASK_STARTUP_PROFILES: Dict[str, Dict[str, float]] = {
 		"aM": 0.82,
 		"sM": 0.08,
 		"gap_scale": 0.05,
-		"d_max": 0.08,
-		"s_base": 0.00,
+		"d_max": 0.15,
+		"s_base": 0.10,
 		"s_gain": 0.14,
 		"f_bias": 0.16,
 		"t_task_bias": -0.06,
@@ -219,3 +219,50 @@ STRESS_PENALTY_COEF = 0.3
 # Safety soft thresholds for reward penalties.
 SOFT_T = 1.0
 SOFT_PR = 1.0
+
+# --- Newly Added Phase 2 Constants ---
+ACTUATOR_INERTIA_ALPHA = 0.5
+INTEGRATOR = "RK2"
+DT = 1.0
+HYSTERESIS_MARGIN = 0.02
+
+# Power dynamics coefficients
+P_GAIN = 0.8
+P_LOAD_COEF = 0.3
+P_DEG_COEF = 0.6
+
+# Temperature dynamics coefficients
+TEMP_POWER_COEF = 0.04
+TEMP_EXP_P = 1.1
+TEMP_COOL_COEF = 0.06
+TEMP_EXP_F = 1.05
+TEMP_ENV_COOL = 0.01
+TEMP_DEG_COEF = 0.05
+
+# Pressure dynamics coefficients
+PR_T_COEF = 0.2
+PR_P_COEF = 0.05
+PR_DAMP = 0.1
+
+# Stress dynamics coefficients - amplified for visibility
+STRESS_T_COEF = 0.08
+STRESS_U_OSC_COEF = 0.5
+STRESS_DECAY = 0.04
+
+# Degradation dynamics coefficients - amplified for visibility
+DEG_FROM_S_COEF = 0.05
+DEG_BETA = 1.0  # Linear dependence
+DEG_RECOVERY_RATE = 0.01
+
+# Reward weights
+W_TRACK = 1.0
+W_SAFETY = 2.0
+W_STABILITY = 0.5
+W_EFF = 0.1
+
+# Parser defaults and UI toggles
+PARSER_DEFAULT_U = 0.5
+PARSER_DEFAULT_F = 0.5
+INCLUDE_PARSE_ERROR_IN_STEP = True
+
+

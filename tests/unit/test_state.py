@@ -1,7 +1,7 @@
 import pytest
 
 from env.core import ThermalPlantEnv
-from env.transitions import build_coherent_initial_state, clamp_state, is_catastrophic
+from env.transitions import build_coherent_initial_state, clamp_state, check_catastrophic
 from env.state import ThermalPlantState
 from utils.constants import TASK_STARTUP_PROFILES, DEFAULT_TASK_ID
 
@@ -29,7 +29,7 @@ def test_startup_not_catastrophic_for_tasks():
 	for task in TASK_STARTUP_PROFILES:
 		for ep in (0, 1, 7):
 			st = build_coherent_initial_state(task_id=task, episode_id=ep)
-			assert not is_catastrophic(st), f"Startup catastrophic for {task}@{ep}"
+			assert not check_catastrophic(st)[0], f"Startup catastrophic for {task}@{ep}"
 
 
 def test_clamp_state_enforces_bounds():

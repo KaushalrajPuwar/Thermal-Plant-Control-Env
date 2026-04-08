@@ -1079,3 +1079,108 @@ NONE
 - Local tests exposed `0.5` persistent defaults due to the LLM not producing pure JSON. Parser was updated with an unconditional regex `pair_match` to robustly capture these values while avoiding penalties.
 - `last_valid_action` now properly ignores parser fallbacks, preventing invalid state propagation.
 - Teammate A Phase 1 foundation logic (state container, bounds clamping, core reset/step function boundaries) was confirmed to be structurally complete and successfully wiring up to inference. The environment now legally fails on threshold breaches (catastrophic logic).
+
+## PROGRESS LOG ENTRY 2026-04-06 (COMPLETE-PHASE2-TEAMMATE-A)
+
+### CURRENT PHASE
+
+ENV_CORE
+
+### CURRENT TASK
+
+Phase 2 Teammate A implementation complete.
+
+### LAST COMPLETED
+
+Transition logic complete with non-linear ODE implementations (actuators, power, temperature, pressure, stress, degradation), step-level reward composition, info dict checks, and corresponding unit tests. All tests passing deterministically.
+
+### NEXT STEPS
+
+- Ensure robust parser robustness and error handling (Teammate B Phase 2).
+- Integration testing between components (Teammate C Phase 2).
+
+### BLOCKERS
+
+NONE
+
+### FILES MODIFIED
+
+- utils/constants.py
+- env/transitions.py
+- env/core.py
+- tests/unit/test_state.py
+- tests/unit/test_transitions.py
+
+### ARCHITECTURE COMPLIANCE CHECK
+
+- [x] follows architecture.txt
+- [x] no new components added
+- [x] no duplication introduced
+- [x] parsing logic unchanged
+
+### VALIDATION STATUS
+
+- inference.py runs: YES
+- parser robust: NO (Still needed in Phase 2 B)
+- grader outputs valid: NO (Still needed in Phase 3)
+- deterministic: YES
+- docker builds: NO (Untested so far)
+- HF Space live: NO
+
+### NOTES
+
+Non-linear equations encoded using RK2 vector step updates. All constants moved to `utils/constants.py`.
+
+## PROGRESS LOG ENTRY 2026-04-08 (COMPLETE-PHASE2-TEAMMATE-B)
+
+### CURRENT PHASE
+
+INFERENCE
+
+### CURRENT TASK
+
+Phase 2 Teammate B implementation complete.
+
+### LAST COMPLETED
+
+Parser JSON/regex hardening, default centralization, pairwise text combinations processing. Penalty extraction, validation checks robust output tests.
+
+### NEXT STEPS
+
+- Phase 3 Grader Generation.
+- Validate local model output combinations with the rest of the application codebase.
+
+### BLOCKERS
+
+NONE
+
+### FILES MODIFIED
+
+- utils/parser.py
+- utils/schemas.py
+- utils/logging_utils.py
+- utils/constants.py
+- inference.py
+- tests/unit/test_parser.py
+- tests/adversarial/test_malformed_llm_outputs.py
+
+### ARCHITECTURE COMPLIANCE CHECK
+
+- [x] follows architecture.txt
+- [x] no new components added
+- [x] no duplication introduced
+- [x] parsing logic unchanged
+
+### VALIDATION STATUS
+
+- inference.py runs: YES
+- parser robust: YES 
+- grader outputs valid: NO (Still needed in Phase 3)
+- deterministic: YES
+- docker builds: NO (Untested so far)
+- HF Space live: NO
+
+### NOTES
+
+Parser now checks for JSON, regex, separated pairs, and validates correctly before reverting to fallback with the associated metadata passed to log/history files.
+

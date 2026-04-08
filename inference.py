@@ -5,10 +5,7 @@ from __future__ import annotations
 import os
 import textwrap
 from typing import Dict, List, Optional
-from dotenv import load_dotenv
 import sys
-
-load_dotenv()
 
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -17,17 +14,17 @@ load_dotenv()
 from env.interface import ConcreteOpenEnvInterface
 from utils import constants as C
 from utils.logging_utils import canonical_action_string, log_end, log_start, log_step
-from utils.parser import DEFAULT_F_TARGET, DEFAULT_U_TARGET, parse_llm_action
+from utils.parser import parse_llm_action
 from utils.schemas import EpisodeTrajectory, StepLogRecord, TrajectoryStep, TrajectorySummary
 
 BENCHMARK = "thermal-plant-control"
 
-TEMPERATURE = 0.1
+TEMPERATURE = 0.2
 MAX_TOKENS = 120
 SUCCESS_SCORE_THRESHOLD = 0.10
 DEFAULT_ACTION = {
-    "U_target": DEFAULT_U_TARGET,
-    "F_target": DEFAULT_F_TARGET,
+    "U_target": C.PARSER_DEFAULT_U,
+    "F_target": C.PARSER_DEFAULT_F,
 }
 
 # These will be injected by the judge's infrastructure
@@ -40,11 +37,9 @@ DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
 SYSTEM_PROMPT = textwrap.dedent(
 	"""
-	You are controlling a thermal plant benchmark.
-	Return ONLY compact pair with exactly these keys and the value you see fit:
-	{"U_target": value, "F_target": value} but return only this format: value value. It is understood that first value is "U_target" and second value is "F_target"
-	Do not include markdown, explanation, prose, or extra keys.
-	Both values must be numeric targets in the range [0, 1].
+	You are controlling a thermal plant benchmark. 
+	Return ONLY a compact numeric pair separated by a space representing your chosen `U_target` and `F_target` (e.g. "0.60 0.50").
+	Both targets must be strictly in the range [0, 1]. Do not output JSON, explanations, or prose.
 	"""
 ).strip()
 
@@ -201,13 +196,22 @@ def main() -> None:
 				u_target=canonical_action["U_target"],
 				f_target=canonical_action["F_target"],
 			)
+			
+			step_error = error
+			if parsed_action.invalid_output and C.INCLUDE_PARSE_ERROR_IN_STEP:
+				parse_err_msg = parsed_action.parse_error or "invalid_llm_output"
+				if step_error:
+					step_error = f"parse:{parse_err_msg} | env:{step_error}"
+				else:
+					step_error = f"parse:{parse_err_msg}"
+
 			log_step(
 				StepLogRecord(
 					step=step,
 					action=action_string,
 					reward=total_reward,
 					done=done,
-					error=error,
+					error=step_error,
 				)
 			)
 

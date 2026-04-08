@@ -15,8 +15,10 @@ Update order contract used by env core:
 from __future__ import annotations
 
 from typing import Dict, Tuple
+import math
 
 from env.state import ThermalPlantState
+import utils.constants as C
 from utils.constants import (
 	COOL_DEG_LOSS,
 	D_BOUNDS,
@@ -272,72 +274,118 @@ def build_coherent_initial_state(task_id: str, episode_id: int) -> ThermalPlantS
 	return clamp_state(state)
 
 
-def update_actuators(prev_u: float, prev_f: float, u_target: float, f_target: float) -> Tuple[float, float]:
-	"""Apply actuator inertia to smooth changes in control inputs."""
-	u = U_INERTIA_PREV * prev_u + U_INERTIA_TARGET * u_target
-	f = F_INERTIA_PREV * prev_f + F_INERTIA_TARGET * f_target
-	return u, f
 
-
-def update_power(prev_p: float, u: float) -> float:
-	"""Update power with lagged response to control input."""
-	return P_PREV_COEF * prev_p + P_U_COEF * u
-
-
-def compute_cooling_coeff(prev_t: float, degradation: float) -> float:
-	"""Compute cooling coefficient with temperature and current-step degradation."""
-	k_cool = K_COOL_BASE * (1.0 - min(1.0, prev_t))
-	return k_cool * (1.0 - degradation)
-
-
-def update_temperature(prev_t: float, p: float, f: float, degradation: float) -> float:
-	"""Update temperature from power heating and cooling flow.
-
-	Uses current-step degradation D(t) for cooling effectiveness.
-	"""
-	k_cool_final = compute_cooling_coeff(prev_t=prev_t, degradation=degradation)
-	return prev_t + T_POWER_COEF * p - k_cool_final * f
-
-
-def update_pressure(prev_pr: float, t: float, p: float) -> float:
-	"""Update pressure from coupled temperature and power dynamics."""
-	return PR_PREV_COEF * prev_pr + PR_MIX_COEF * (t + PR_POWER_COEF * p)
-
-
-def update_stress(prev_s: float, t: float) -> float:
-	"""Accumulate stress only when temperature exceeds warning threshold."""
-	return prev_s + max(0.0, t - T_WARNING) * STRESS_RATE
-
-
-def update_degradation(prev_d: float, u_target: float, prev_u: float) -> float:
-	"""Accumulate degradation from aggressive control target shifts."""
-	return prev_d + DEGRADATION_RATE * abs(u_target - prev_u)
+def integration_step(state: ThermalPlantState, action: Dict[str, float]) -> Tuple[ThermalPlantState, float, bool, dict]:
+	# 1) Parse & clamp targets
+	u_target, f_target = clamp_action_targets(action.get(C.ACTION_U_TARGET, state.U), action.get(C.ACTION_F_TARGET, state.F))
+	
+	# 2) Actuator Explicit update
+	next_u = state.U + C.ACTUATOR_INERTIA_ALPHA * (u_target - state.U)
+	next_f = state.F + C.ACTUATOR_INERTIA_ALPHA * (f_target - state.F)
+	
+	# Clamp actuators immediately
+	next_u = clamp(next_u, C.U_BOUNDS[0], C.U_BOUNDS[1])
+	next_f = clamp(next_f, C.F_BOUNDS[0], C.F_BOUNDS[1])
+	
+	delta_u = next_u - state.U
+	
+	# 3) RK2 Integration for P, T, Pr, S, D
+	x = [state.P, state.T, state.Pr, state.S, state.D]
+	
+	def der(x_vec):
+		P, T, Pr, S, D = x_vec
+		
+		# Power: dP/dt = P_GAIN * U * (1 - P/1.0) - P_LOAD_COEF*(P - L) - P_DEG_COEF*P*D
+		dP = C.P_GAIN * next_u * (1.0 - P) - C.P_LOAD_COEF * (P - state.L) - C.P_DEG_COEF * P * D
+		
+		# Temperature: dT/dt = a*P^1.1 - b*F^1.05 - c*(T - T_env) - e*D*T
+		# T_env is 0.0 effectively
+		dT = C.TEMP_POWER_COEF * (P ** C.TEMP_EXP_P if P > 0 else 0) \
+			 - C.TEMP_COOL_COEF * (next_f ** C.TEMP_EXP_F if next_f > 0 else 0) \
+			 - C.TEMP_ENV_COOL * T - C.TEMP_DEG_COEF * D * T
+			 
+		# Pressure: dPr/dt = p1*tanh(p2*(T - T_ref)) + p3*P^1.05 - p4*Pr
+		dPr = C.PR_T_COEF * math.tanh(C.PR_T_COEF * (T - 0.5)) + C.PR_P_COEF * (P ** 1.05 if P > 0 else 0) - C.PR_DAMP * Pr
+		
+		# Stress: Accumulate from temperature baseline + control effort
+		dS = C.STRESS_T_COEF * max(0.0, T - 0.4) + C.STRESS_U_OSC_COEF * (delta_u ** 2) - C.STRESS_DECAY * S
+		
+		# Degradation: dD/dt = depends linearly on Stress, natural recovery
+		dD = C.DEG_FROM_S_COEF * S - C.DEG_RECOVERY_RATE * D
+		
+		return [dP, dT, dPr, dS, dD]
+		
+	if C.INTEGRATOR == "RK2":
+		k1 = der(x)
+		x_temp = [x[i] + C.DT * k1[i] for i in range(5)]
+		k2 = der(x_temp)
+		x_next = [x[i] + (C.DT / 2.0) * (k1[i] + k2[i]) for i in range(5)]
+	else:
+		# Fallback Euler
+		k1 = der(x)
+		x_next = [x[i] + C.DT * k1[i] for i in range(5)]
+		
+	# Populate next state
+	next_state = ThermalPlantState(
+		L=state.L,
+		U=next_u,
+		F=next_f,
+		P=x_next[0],
+		T=x_next[1],
+		Pr=x_next[2],
+		S=x_next[3],
+		D=x_next[4]
+	)
+	
+	# Clamp state immediately
+	next_state = clamp_state(next_state)
+	
+	# Done logic and precedence
+	catastrophic, error_msg = check_catastrophic(next_state)
+	done = catastrophic
+	info = {"error": error_msg if catastrophic else None, "invalid_action": False, "invalid_action_penalty": 0.0}
+	
+	reward = compute_reward(state, next_state, delta_u)
+	
+	return next_state, reward, done, info
 
 
 def clamp_state(state: ThermalPlantState) -> ThermalPlantState:
-	"""Clamp all state values to their configured bounds."""
-	state.P = clamp(state.P, P_BOUNDS[0], P_BOUNDS[1])
-	state.L = clamp(state.L, L_BOUNDS[0], L_BOUNDS[1])
-	state.U = clamp(state.U, U_BOUNDS[0], U_BOUNDS[1])
-	state.F = clamp(state.F, F_BOUNDS[0], F_BOUNDS[1])
-	state.T = clamp(state.T, T_BOUNDS[0], T_BOUNDS[1])
-	state.Pr = clamp(state.Pr, PR_BOUNDS[0], PR_BOUNDS[1])
-	state.S = clamp(state.S, S_BOUNDS[0], S_BOUNDS[1])
-	state.D = clamp(state.D, D_BOUNDS[0], D_BOUNDS[1])
+	state.U = clamp(state.U, C.U_BOUNDS[0], C.U_BOUNDS[1])
+	state.F = clamp(state.F, C.F_BOUNDS[0], C.F_BOUNDS[1])
+	state.P = clamp(state.P, C.P_BOUNDS[0], C.P_BOUNDS[1])
+	state.T = clamp(state.T, C.T_BOUNDS[0], C.T_BOUNDS[1])
+	state.Pr = clamp(state.Pr, C.PR_BOUNDS[0], C.PR_BOUNDS[1])
+	state.S = clamp(state.S, C.S_BOUNDS[0], C.S_BOUNDS[1])
+	state.D = clamp(state.D, C.D_BOUNDS[0], C.D_BOUNDS[1])
 	return state
 
 
-def is_catastrophic(state: ThermalPlantState) -> bool:
-	"""Return True if any hard safety limit is breached."""
-	return state.T > FAIL_T or state.Pr > FAIL_PR or state.S > FAIL_S
+def check_catastrophic(state: ThermalPlantState) -> Tuple[bool, str]:
+	if state.T > C.FAIL_T + C.HYSTERESIS_MARGIN:
+		return True, "Catastrophic failure: Temperature limit exceeded."
+	if state.Pr > C.FAIL_PR + C.HYSTERESIS_MARGIN:
+		return True, "Catastrophic failure: Pressure limit exceeded."
+	if state.S > C.FAIL_S + C.HYSTERESIS_MARGIN:
+		return True, "Catastrophic failure: Stress limit exceeded."
+	return False, ""
 
 
-def compute_reward(state: ThermalPlantState, prev_u: float) -> float:
-	"""Compute step reward from tracking, safety, smoothness, and stress."""
-	reward = 0.0
-	reward += 1.0 - abs(state.P - state.L)
-	reward -= max(0.0, state.T - SOFT_T) * SAFETY_PENALTY_COEF
-	reward -= max(0.0, state.Pr - SOFT_PR) * SAFETY_PENALTY_COEF
-	reward -= abs(state.U - prev_u) * OSCILLATION_PENALTY_COEF
-	reward -= state.S * STRESS_PENALTY_COEF
-	return reward
+def compute_reward(prev_state: ThermalPlantState, state: ThermalPlantState, delta_u: float) -> float:
+	# R_track
+	r_track = -abs(state.P - state.L)
+	
+	# R_safety
+	r_safety = C.SAFETY_PENALTY_COEF * max(0.0, state.T - C.SOFT_T) + C.SAFETY_PENALTY_COEF * max(0.0, state.Pr - C.SOFT_PR)
+	
+	# R_stability
+	r_stability = (delta_u ** 2)
+	
+	# R_eff
+	r_eff = state.U**2 + state.F**2
+	
+	# R_invalid is applied outside this by parsing wrapper, but can be added in env core if needed.
+	
+	reward = C.W_TRACK * r_track - C.W_SAFETY * r_safety - C.W_STABILITY * r_stability - C.W_EFF * r_eff
+	return clamp(reward, -10.0, 10.0)
+
