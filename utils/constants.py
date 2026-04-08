@@ -49,7 +49,7 @@ DEFAULT_STATE: Dict[str, float] = {
 # Episode controls.
 # Tasks dictate default episode lengths. Max steps are defined in the specific Task subclasses.
 DEFAULT_TASK_ID = "task1"
-DEFAULT_EPISODE_ID = 143
+DEFAULT_EPISODE_ID = 43
 OBSERVATION_DECIMALS = 2
 
 # External evaluator episode policy

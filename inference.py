@@ -9,7 +9,7 @@ import sys
 
 from openai import OpenAI
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 from env.interface import ConcreteOpenEnvInterface
 from tasks.registry import get_task
