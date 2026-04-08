@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 import os
 from fastapi.responses import JSONResponse
@@ -29,15 +30,16 @@ env_interface = ConcreteOpenEnvInterface()
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset_endpoint(body: ResetRequest, http_request: Request):
+def reset_endpoint(http_request: Request, body: Optional[ResetRequest] = None):
     """
     Resets the environment to a new initial state based on the provided
     task and episode ID. This is the starting point for any new episode.
     """
+    if body is None:
+        body = ResetRequest()
+        
     dev_token = http_request.headers.get(DEV_RESET_HEADER.lower())
-    if not dev_token:
-        raise HTTPException(status_code=403, detail=f"Forbidden: Missing {DEV_RESET_HEADER} header for reset.")
-
+    
     try:
         env_token = os.getenv(DEV_RESET_TOKEN_ENV)
 
