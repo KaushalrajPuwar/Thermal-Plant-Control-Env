@@ -34,9 +34,11 @@ def reset_endpoint(body: ResetRequest, http_request: Request):
     Resets the environment to a new initial state based on the provided
     task and episode ID. This is the starting point for any new episode.
     """
+    dev_token = http_request.headers.get(DEV_RESET_HEADER.lower())
+    if not dev_token:
+        raise HTTPException(status_code=403, detail=f"Forbidden: Missing {DEV_RESET_HEADER} header for reset.")
+
     try:
-        # Inspect developer token header using the configured header name
-        dev_token = http_request.headers.get(DEV_RESET_HEADER.lower())
         env_token = os.getenv(DEV_RESET_TOKEN_ENV)
 
         if dev_token and env_token and dev_token == env_token:

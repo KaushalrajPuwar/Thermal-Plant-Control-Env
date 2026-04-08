@@ -3,7 +3,7 @@
 import pytest
 from utils.parser import parse_llm_action
 from utils.schemas import ParsedAction
-from utils.constants import PARSER_DEFAULT_U, PARSER_DEFAULT_F
+from utils.constants import PARSER_DEFAULT_U, PARSER_DEFAULT_F, INVALID_ACTION_PENALTY
 
 
 def test_valid_json():
@@ -21,7 +21,7 @@ def test_json_missing_keys():
     result = parse_llm_action(text)
     assert result.source == "default"
     assert result.invalid_output is True
-    assert result.penalty_applied == -1.0
+    assert result.penalty_applied == -INVALID_ACTION_PENALTY
     assert result.parse_error is not None and "missing required keys" in result.parse_error
     assert result.u_target == PARSER_DEFAULT_U
     assert result.f_target == PARSER_DEFAULT_F
@@ -89,7 +89,7 @@ def test_empty_string_fallback():
     result = parse_llm_action(text, previous_valid_action=None)
     assert result.source == "default"
     assert result.invalid_output is True
-    assert result.penalty_applied == -1.0
+    assert result.penalty_applied == -INVALID_ACTION_PENALTY
     assert result.u_target == PARSER_DEFAULT_U
     assert result.f_target == PARSER_DEFAULT_F
 
@@ -99,6 +99,6 @@ def test_previous_valid_action():
     result = parse_llm_action(text, previous_valid_action=prev_action)
     assert result.source == "previous_valid"
     assert result.invalid_output is True
-    assert result.penalty_applied == -1.0
+    assert result.penalty_applied == -INVALID_ACTION_PENALTY
     assert result.u_target == 0.45
     assert result.f_target == 0.55

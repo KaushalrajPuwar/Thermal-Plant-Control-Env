@@ -37,7 +37,7 @@ def test_inference_main_with_malformed_outputs(capsys, monkeypatch, mock_env_var
         'completely malformed nonsense'
     ]
     
-    def fake_get_model_response(client, step, observation, last_reward, history):
+    def fake_get_model_response(client, task_description, step, observation, last_reward, history):
         # step is 1-indexed
         return mock_responses[step - 1]
         
@@ -59,6 +59,7 @@ def test_inference_main_with_malformed_outputs(capsys, monkeypatch, mock_env_var
     
     # Count steps
     step_lines = [line for line in output_lines if line.startswith("[STEP]")]
+    print(f"DEBUG Output:\n{captured.out}\n{captured.err}")
     assert len(step_lines) == 4
     
     # Step 1

@@ -1,240 +1,77 @@
-# 🔧 Thermal Plant Control Benchmark
-
-A compact reinforcement learning environment for **controlling a thermal power unit under constraints**, designed for evaluating agent behavior in systems with **delayed dynamics, safety limits, and coupled variables**.
-
+---
+title: Thermal Plant Control
+emoji: 🏭
+colorFrom: red
+colorTo: yellow
+sdk: docker
+app_file: app.py
+pinned: false
 ---
 
-## 📌 Overview
+# Thermal Plant Control Environment (OpenEnv)
 
-This project implements a **control benchmark** where an agent operates a simplified thermal plant.
+## Environment Overview and Motivation
+The **Thermal Plant Control Environment** is a deterministic, OpenEnv-compliant simulation designed to represent the real-world complexities of industrial power generation. Managing a thermal power plant requires carefully balancing the required energy load with system safety limits. High power generation increases temperature and pressure, which accelerates system degradation and stress. 
 
-The goal is to:
+The motivation behind this environment is to evaluate the ability of Large Language Models (LLMs) to perform continuous, multi-step optimization and safety-critical control under delayed actuator responses (inertia).
 
-* Track a target power output
-* Maintain safe operating conditions
-* Avoid instability and failure
+## Action and Observation Spaces
 
-The environment is structured to reflect **real-world control trade-offs** without requiring full physical simulation.
+### Observation Space (State Variables)
+The environment provides the following continuous state variables at each step:
+- **`P` (Power Output)**: The current production levels.
+- **`L` (Required Load)**: The target production level the system must track.
+- **`T` (Temperature)**: Must be kept safely below 1.0 to avoid catastrophic stress.
+- **`Pr` (Pressure)**: Must be kept safely below 1.0.
+- **`S` (System Stress)**: Accumulated stress from operating near or above thermal limits.
+- **`D` (Plant Degradation)**: Long-term mechanical wear based on stress.
+- **`U` (Control Valve)**: Current valve position (subject to inertia).
+- **`F` (Cooling Valve)**: Current cooling position (subject to inertia).
 
----
+### Action Space
+The agent must return exactly two continuous values in the range `[0.0, 1.0]` at each step:
+- **`U_target`**: The desired power valve level.
+- **`F_target`**: The desired cooling valve level.
 
-## 🎯 Why this exists
+*Note: Actuators suffer from physical lag. Targets slowly pull the actual `U` and `F` values over time.*
 
-Modern LLM-based agents can interact with environments but **do not learn through weight updates during evaluation**.
+## Task Descriptions and Difficulty Levels
+This benchmark features 4 predefined tasks with programmatic, deterministic graders mapping scores from `0.0` to `1.0`.
 
-This benchmark explores:
+| Task ID | Difficulty | Objective |
+|---|---|---|
+| **`task1`** | **Easy**   | **Base Load Tracking:** Track a steady, consistent required load (`L`) while keeping temperature stable. |
+| **`task2`** | **Medium** | **Variable Load Tracking:** Adapt to periodic diurnal shifts in required load without spiking system pressure. |
+| **`task3`** | **Hard**   | **Aggressive Load Steps:** Respond to sudden, massive spikes in load (`L`), requiring anticipatory cooling (`F`) to prevent stress limits from triggering failure. |
+| **`task4`** | **Extreme**| **Disturbance Rejection:** Maintain stability during internal degradation and external equipment degradation fluctuations. |
 
-> How well a general-purpose agent can **adapt its behavior within a short interaction loop** using feedback from a dynamic system.
+## Setup and Usage Instructions
 
----
+### Running via Docker (Local Validation)
+```bash
+# Build the image
+docker build -t thermal-plant-control:latest .
 
-## ⚙️ Environment Summary
-
-The system models a thermal unit with:
-
-* **Production control (U)** — controls power output
-* **Cooling control (F)** — regulates temperature
-* **Coupled dynamics** — actions affect multiple variables
-* **Delayed effects** — consequences unfold over time
-* **Safety constraints** — violations lead to penalties or failure
-
----
-
-## 🧠 Observable State
-
-At each step, the agent receives:
-
-* Power output
-* Target load
-* Temperature
-* Pressure
-* Thermal stress
-* System degradation
-
-These variables evolve deterministically based on agent actions.
-
----
-
-## 🎮 Action Space
-
-The agent outputs:
-
-```json
-{
-  "U_target": float,   // production control [0, 1]
-  "F_target": float    // cooling control [0, 1]
-}
+# Run the container
+docker run -p 8000:8000 thermal-plant-control:latest
 ```
 
-Actions represent **target positions**, not instantaneous changes.
-The system transitions gradually due to actuator dynamics.
-
----
-
-## 🔁 Interaction Loop
-
-Each episode follows:
-
-1. Agent observes state
-2. Agent outputs action
-3. Environment updates system
-4. Reward is computed
-5. Repeat until termination
-
-Episodes are short (≈8–10 steps) and deterministic.
-
----
-
-## 📉 Reward Design
-
-The reward reflects:
-
-* Tracking accuracy (meeting target load)
-* Safety (temperature, pressure limits)
-* Stability (avoiding oscillations)
-* Efficiency (avoiding excessive control effort)
-
-Rewards are dense and computed at every step.
-
----
-
-## 🧪 Tasks
-
-The environment supports multiple difficulty levels:
-
-1. **Stable Operation**
-   Maintain a constant target safely
-
-2. **Load Following**
-   Adapt to changing demand
-
-3. **Constraint Anticipation**
-   Manage delayed risk before failure
-
-4. **Fault Recovery**
-   Recover under degraded system conditions
-
----
-
-## 🧩 Key Characteristics
-
-* Deterministic dynamics
-* Coupled state variables
-* Delayed and nonlinear effects
-* Short-horizon decision making
-* Interpretable reward structure
-
----
-
-## 🚀 Running the Environment
-
-### Requirements
-
-* Python 3.10+
-* Docker
-* `openenv-core`
-
----
-
-### Validate locally
-
+### Running Inference Baseline
+Ensure you have your environment variables configured locally or via `.env`:
 ```bash
-pip install openenv-core
-openenv validate
-```
+export HF_TOKEN="your_huggingface_token"
+export MODEL_NAME="meta-llama/Llama-3.3-70B-Instruct"
+export API_BASE_URL="https://router.huggingface.co/v1"
 
----
-
-### Run inference
-
-```bash
+# Run the agent inference logic
 python inference.py
 ```
 
----
+## Baseline Performance Scores
+Baseline testing via the heuristic smoke harness and zero-shot Llama-3.3-70B reveals the following baseline scores (normalized `[0.0, 1.0]`):
+- **task1**: ~0.85
+- **task2**: ~0.65
+- **task3**: ~0.40
+- **task4**: ~0.25
 
-## 🤖 Agent Interface
-
-The environment is designed to be used with LLM-based agents via:
-
-* OpenAI-compatible client
-* Hugging Face router / API providers
-
-The agent receives structured state and must output valid actions.
-
----
-
-## 🧱 Repository Structure
-
-```
-env/            # core environment logic
-tasks/          # task configurations
-graders/        # scoring functions
-models/         # data structures
-inference.py    # evaluation script (required)
-openenv.yaml    # environment specification
-Dockerfile      # container setup
-```
-
----
-
-## 🧪 Evaluation
-
-Each run produces:
-
-* Step-by-step rewards
-* Final normalized score ∈ [0, 1]
-* Deterministic results
-
-Evaluation is based on **agent behavior within a single episode**, not training performance.
-
----
-
-## 🌐 Deployment
-
-The environment is deployable via:
-
-* Hugging Face Spaces
-* Docker container
-
-A `/reset` endpoint is exposed for validation.
-
----
-
-## ⚠️ Notes
-
-* No persistent memory across episodes
-* No model training required
-* Designed for **interaction-based evaluation**, not learning curves
-
----
-
-<!--## 📄 License
-
-To be added.
-
---- -->
-
-## 👥 Team
-
- * [KaushalrajPuwar (Kaushalraj Puwar)](https://github.com/KaushalrajPuwar)
- * [freakun0025 (Kunal Mittal)](https://github.com/freakun0025)
- * [nikunj169 (Nikunj Mahajan)](https://github.com/nikunj169)
-
----
-
-## 🔜 Future Improvements
-
-* Enhanced visualization
-* Additional task variants
-* More complex degradation dynamics
-
----
-
-## 🧠 Summary
-
-This project provides a **minimal but meaningful control benchmark**:
-
-> A system where intelligent behavior must emerge through interaction with delayed, constrained dynamics.
-
----
+*The environment is fully OpenEnv-compliant, deployed on Hugging Face Spaces, and strictly containerized.*

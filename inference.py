@@ -32,6 +32,7 @@ DEFAULT_ACTION = {
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+IMAGE_NAME = os.getenv("IMAGE_NAME", "thermal-plant-control:latest")
 TASK_NAME = os.getenv("THERMAL_PLANT_TASK", C.DEFAULT_TASK_ID)
 EPISODE_ID = int(os.getenv("THERMAL_PLANT_EPISODE_ID", str(C.DEFAULT_EPISODE_ID)))
 DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
@@ -137,6 +138,14 @@ def determine_termination_reason(loop_error: Optional[str], done: bool, steps_ta
 
 def main() -> None:
 	"""Run a full deterministic inference episode and always emit end logs."""
+	TASK_NAME = os.getenv("THERMAL_PLANT_TASK", C.DEFAULT_TASK_ID)
+	MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
+	API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+	IMAGE_NAME = os.getenv("IMAGE_NAME", "thermal-plant-control:latest")
+	EPISODE_ID = int(os.getenv("THERMAL_PLANT_EPISODE_ID", str(C.DEFAULT_EPISODE_ID)))
+	HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+	DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
+
 	model_name_for_logs = MODEL_NAME or "unset"
 	env = ConcreteOpenEnvInterface()
 	client: Optional[OpenAI] = None
@@ -342,6 +351,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-	if HF_TOKEN is None:
+	if os.getenv("HF_TOKEN") is None and os.getenv("API_KEY") is None:
 		raise ValueError("HF_TOKEN environment variable is required")
 	main()
