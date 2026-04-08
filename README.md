@@ -75,3 +75,9 @@ Baseline testing via the deterministic heuristic smoke harness reveals the follo
 - **task4**: ~0.65
 
 *The environment is fully OpenEnv-compliant, deployed on Hugging Face Spaces, and strictly containerized.*
+
+## Team Magneto's Cheetos
+
+ * [KaushalrajPuwar (Kaushalraj Puwar)](https://github.com/KaushalrajPuwar)
+ * [freakun0025 (Kunal Mittal)](https://github.com/freakun0025)
+ * [nikunj169 (Nikunj Mahajan)](https://github.com/nikunj169)
