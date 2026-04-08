@@ -1184,3 +1184,116 @@ NONE
 
 Parser now checks for JSON, regex, separated pairs, and validates correctly before reverting to fallback with the associated metadata passed to log/history files.
 
+## PROGRESS LOG ENTRY 2026-04-08 (TASKS: TASK3 HARDENING & TUNING)
+
+### CURRENT PHASE
+
+TASKS / ENV_CORE
+
+### CURRENT TASK
+
+Harden Task 3 to remove the trivial cooling exploit and make the constraint management objective both challenging and solvable.
+
+### LAST COMPLETED
+
+- Added a persistent exogenous heat disturbance to `Task3.apply_disturbance()` to simulate a coolant deficiency.
+- Tuned the injected heat from `+0.06` -> `+0.045` to create a feasible trade-off (LMs can survive by reducing power to ~0.55-0.60).
+- Implemented `is_completed()` for Task 3 to allow early termination when constraints are stabilized (error <= 0.02, T < 0.85, min steps reached).
+
+### NEXT STEPS
+
+- Run automated integration tests across a small sweep of seeds to validate median difficulty and non-trivial passing policy exists.
+- If required after stats collection, iterate on `TASK_STARTUP_PROFILES` for task3 to tune initial T distribution.
+
+### BLOCKERS
+
+NONE
+
+### FILES MODIFIED
+
+- tasks/task3.py
+
+### ARCHITECTURE COMPLIANCE CHECK
+
+- [x] follows architecture.txt
+- [x] no new components added
+- [x] no duplication introduced
+- [x] parsing logic unchanged
+
+### VALIDATION STATUS
+
+- inference.py runs: YES
+- parser robust: YES
+- grader outputs valid: NO
+- deterministic: YES
+- docker builds: NO
+- HF Space live: NO
+
+### NOTES
+
+- The added exogenous heat prevents brute-forcing with max cooling alone; the LLM must choose to sacrifice tracking to arrest thermal momentum.
+
+## PROGRESS LOG ENTRY 2026-04-08 (ANALYSIS: INFERENCE DEBUG RUN)
+
+### CURRENT PHASE
+
+INFERENCE
+
+### CURRENT TASK
+
+Run `inference.py` in `DEBUG` mode to observe LLM behaviour under the new Task 3 regime and collect example traces.
+
+### LAST COMPLETED
+
+- Observed that the LLM: (a) allowed `T` to cross 0.9, (b) accumulated `S` each step the temperature remained high, and (c) ultimately survived only because the episode length ended at `max_steps=12`.
+- Example run summary: initial `T=0.88` → LLM increased cooling but did not reduce power sufficiently; stress rose step-by-step and ended at `S~0.99` at episode termination (score ~0.51).
+
+### NEXT STEPS
+
+- Collect multiple traces and compute distribution of final `S` and scores to verify difficulty calibration.
+- Implement graders to convert these raw traces into official metrics (Norm_TE, Constraint Violations, Recovery Time, etc.).
+
+### BLOCKERS
+
+NONE
+
+### FILES MODIFIED
+
+- none (analysis and logging only)
+
+### NOTES
+
+- Behaviour demonstrates the environment is a good discriminator: LLMs that do not prioritize constraints obtain mediocre scores or catastrophic failure given longer episodes.
+
+## PROGRESS LOG ENTRY 2026-04-08 (DECISION & NEXT WORK)
+
+### CURRENT PHASE
+
+GRADERS / VALIDATION
+
+### CURRENT TASK
+
+Implement deterministic graders and run end-to-end validation sweeps.
+
+### LAST COMPLETED
+
+- Decided not to weaken the physics to make the LLM succeed; environment should expose logical failures.
+
+### NEXT STEPS
+
+- Implement `graders/task1_grader.py` → `graders/task4_grader.py` using formulas in `context/06_tasks_and_graders.md`.
+- Run integration validation: 50 seeds per task, gather metrics, produce a short calibration report and adjust only if tasks are statistically impossible.
+- Add unit tests for grader outputs and a small CI job to prevent regressions.
+
+### BLOCKERS
+
+NONE (requires implementation time)
+
+### FILES MODIFIED
+
+- graders/* (planned)
+
+### NOTES
+
+- If many seeds indicate tasks are impossible, iterate on `TASK_STARTUP_PROFILES` or `deltas` conservatively; however current single-run diagnostics show a solvable but non-trivial challenge.
+
