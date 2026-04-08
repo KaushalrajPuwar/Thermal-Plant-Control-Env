@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Tuple
 
@@ -52,37 +53,43 @@ class ConcreteOpenEnvInterface(OpenEnvInterface):
 
     _instance: "ConcreteOpenEnvInterface" | None = None
     _env: ThermalPlantEnv | None = None
+    _lock: threading.RLock = threading.RLock()
 
     def __new__(cls, max_steps: int | None = None) -> "ConcreteOpenEnvInterface":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            if max_steps is None:
-                cls._env = ThermalPlantEnv()
-            else:
-                cls._env = ThermalPlantEnv(max_steps=int(max_steps))
-        elif cls._env is not None and max_steps is not None:
-            cls._env.max_steps = int(max_steps)
-        return cls._instance
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                if max_steps is None:
+                    cls._env = ThermalPlantEnv()
+                else:
+                    cls._env = ThermalPlantEnv(max_steps=int(max_steps))
+            elif cls._env is not None and max_steps is not None:
+                cls._env.max_steps = int(max_steps)
+            return cls._instance
 
     def __init__(self, max_steps: int | None = None) -> None:
         """Allow non-API callers to configure the shared env without bypassing the interface."""
-        if self._env is not None and max_steps is not None:
-            self._env.max_steps = int(max_steps)
+        with self._lock:
+            if self._env is not None and max_steps is not None:
+                self._env.max_steps = int(max_steps)
 
     def get_state(self) -> Dict[str, Any]:
         """Returns the full, unrounded internal state from the core environment."""
-        if self._env is None:
-            raise RuntimeError("Environment not initialized.")
-        return self._env.state()
+        with self._lock:
+            if self._env is None:
+                raise RuntimeError("Environment not initialized.")
+            return self._env.state()
 
     def reset(self, task_id: str, episode_id: int) -> Dict[str, float]:
         """Resets the core environment and returns the initial observation."""
-        if self._env is None:
-            raise RuntimeError("Environment not initialized.")
-        return self._env.reset(task_id=task_id, episode_id=episode_id)
+        with self._lock:
+            if self._env is None:
+                raise RuntimeError("Environment not initialized.")
+            return self._env.reset(task_id=task_id, episode_id=episode_id)
 
     def step(self, action: Dict[str, float]) -> Tuple[Dict[str, float], float, bool, Dict[str, Any]]:
         """Performs a step in the core environment."""
-        if self._env is None:
-            raise RuntimeError("Environment not initialized.")
-        return self._env.step(action)
+        with self._lock:
+            if self._env is None:
+                raise RuntimeError("Environment not initialized.")
+            return self._env.step(action)

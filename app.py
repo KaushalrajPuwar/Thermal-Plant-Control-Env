@@ -15,6 +15,8 @@ from env.api import (
 from env.interface import ConcreteOpenEnvInterface
 from utils.constants import DEFAULT_EXTERNAL_EPISODE_ID, DEV_RESET_TOKEN_ENV, DEFAULT_EPISODE_ID
 
+DEV_RESET_HEADER = os.getenv("DEV_RESET_HEADER", "Episode-Override")
+
 # Initialize the FastAPI application
 app = FastAPI(
     title="Thermal Plant Control Environment",
@@ -33,8 +35,8 @@ def reset_endpoint(body: ResetRequest, http_request: Request):
     task and episode ID. This is the starting point for any new episode.
     """
     try:
-        # Inspect developer token header (case-insensitive)
-        dev_token = http_request.headers.get("x-dev-token") or http_request.headers.get("X-DEV-TOKEN")
+        # Inspect developer token header using the configured header name
+        dev_token = http_request.headers.get(DEV_RESET_HEADER.lower())
         env_token = os.getenv(DEV_RESET_TOKEN_ENV)
 
         if dev_token and env_token and dev_token == env_token:
@@ -59,8 +61,28 @@ def step_endpoint(request: StepRequest):
     """
     try:
         action_dict = request.action.model_dump()
+        invalid_flag = False
+        
+        # Clamp inputs and check validity
+        for k in ("U_target", "F_target"):
+            val = action_dict[k]
+            if val < 0.0 or val > 1.0:
+                invalid_flag = True
+                action_dict[k] = max(0.0, min(1.0, val))
+
         observation, reward, done, info = env_interface.step(action_dict)
-        return StepResponse(observation=observation, reward=reward, done=done, info=info)
+        
+        if invalid_flag:
+            info["invalid_action"] = True
+            
+        raw_state = env_interface.get_state()
+        return StepResponse(
+            observation=observation,
+            raw_state=raw_state,
+            reward=reward,
+            done=done,
+            info=info
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to execute step: {e}")
 

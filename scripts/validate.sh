@@ -61,7 +61,7 @@ PY
 
     output_file="$(mktemp)"
     trap 'rm -f "$output_file"' EXIT
-    "$PYTHON_BIN" inference.py >"$output_file"
+    HF_TOKEN="" MODEL_NAME="" API_BASE_URL="" "$PYTHON_BIN" inference.py >"$output_file"
 
     "$PYTHON_BIN" - "$output_file" <<'PY'
 import pathlib
@@ -101,6 +101,11 @@ PY
 }
 
 run_full_validation() {
+    if [[ "${RUN_SMOKE:-1}" == "1" ]]; then
+        echo "Running Smoke Tests via scripts/smoke_test.sh..."
+        "$SCRIPT_DIR/smoke_test.sh" --start-server
+    fi
+
     if ! grep -q "task_registry" tasks/registry.py || ! grep -q "grader_registry" graders/registry.py; then
         echo "Deferred: full openenv validation remains a later-phase check until task/grader registries are implemented."
         exit 2

@@ -5,7 +5,14 @@
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8000}"
+START_SERVER=0
+for arg in "$@"; do
+    if [[ "$arg" == "--start-server" ]]; then
+        START_SERVER=1
+    fi
+done
+
+BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
 PYTHON_BIN="${PYTHON_BIN:-}"
 
 if [[ -z "$PYTHON_BIN" ]]; then
@@ -16,6 +23,16 @@ if [[ -z "$PYTHON_BIN" ]]; then
     else
         echo "Smoke test FAILED. No Python interpreter available for JSON checks."
         exit 1
+    fi
+fi
+
+SERVER_PID=""
+if [[ "$START_SERVER" == "1" ]]; then
+    if ! curl -sS "http://127.0.0.1:8000/" >/dev/null 2>&1; then
+        echo "Starting local server for smoke tests..."
+        "$PYTHON_BIN" -m uvicorn app:app --host 127.0.0.1 --port 8000 --log-level error &
+        SERVER_PID=$!
+        sleep 2
     fi
 fi
 
@@ -31,9 +48,11 @@ perform_request() {
     if [[ -n "$payload" ]]; then
         response="$(curl -sS -w $'\n%{http_code}' -X "$method" "$BASE_URL$path" \
             -H "Content-Type: application/json" \
+            -H "Episode-Override: smoke-test" \
             -d "$payload")"
     else
-        response="$(curl -sS -w $'\n%{http_code}' -X "$method" "$BASE_URL$path")"
+        response="$(curl -sS -w $'\n%{http_code}' -X "$method" "$BASE_URL$path" \
+            -H "Episode-Override: smoke-test")"
     fi
 
     RESPONSE_STATUS="${response##*$'\n'}"
@@ -99,3 +118,8 @@ assert_json_keys "/state endpoint test" "$RESPONSE_BODY" "state"
 echo " - OK"
 
 echo "--- Smoke Test Passed ---"
+
+if [[ -n "$SERVER_PID" ]]; then
+    echo "Stopping local server (PID: $SERVER_PID)..."
+    kill "$SERVER_PID" || true
+fi

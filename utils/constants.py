@@ -48,7 +48,7 @@ DEFAULT_STATE: Dict[str, float] = {
 
 # Episode controls.
 # Shorter episode length helps validation runs show signal quickly.
-DEFAULT_MAX_STEPS = 20
+DEFAULT_MAX_STEPS = 12
 DEFAULT_TASK_ID = "task1"
 DEFAULT_EPISODE_ID = 0
 OBSERVATION_DECIMALS = 2

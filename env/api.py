@@ -24,8 +24,8 @@ class ResetRequest(BaseModel):
 class ActionRequest(BaseModel):
     """Defines the structure for a single action provided to the /step endpoint."""
 
-    U_target: float = Field(..., ge=0.0, le=1.0, description="Control for power generation actuator.")
-    F_target: float = Field(..., ge=0.0, le=1.0, description="Control for coolant flow actuator.")
+    U_target: float = Field(..., description="Control for power generation actuator.")
+    F_target: float = Field(..., description="Control for coolant flow actuator.")
 
 
 class StepRequest(BaseModel):
@@ -41,6 +41,7 @@ class StepResponse(BaseModel):
     """Response body for the /step endpoint, mirroring gym.Env.step output."""
 
     observation: Dict[str, float] = Field(..., description="The agent's observation of the environment.")
+    raw_state: Optional[Dict[str, Any]] = Field(None, description="The full internal state of the environment.")
     reward: float = Field(..., description="The reward returned after the previous action.")
     done: bool = Field(..., description="Whether the episode has ended.")
     info: Dict[str, Any] = Field(..., description="Auxiliary diagnostic information.")
