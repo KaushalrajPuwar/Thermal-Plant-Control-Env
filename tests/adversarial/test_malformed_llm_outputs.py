@@ -16,7 +16,8 @@ def mock_env_vars():
         "MODEL_NAME": "mock_model",
         "API_BASE_URL": "http://mock.endpoint"
     }):
-        yield
+        with patch("inference.HF_TOKEN", "mock_token"):
+            yield
 
 def test_inference_main_with_malformed_outputs(capsys, monkeypatch, mock_env_vars):
     # Mock settings to create a short run

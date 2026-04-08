@@ -104,3 +104,11 @@ def state_endpoint():
 def root():
     """Root endpoint to confirm the API is running."""
     return JSONResponse(content={"message": "Thermal Plant Control API is running."})
+
+def main():
+    import uvicorn
+    uvicorn.run("server.app:app", host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    main()
+

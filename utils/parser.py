@@ -8,9 +8,9 @@ import os
 from typing import Any, Mapping, Optional
 
 from utils.schemas import ParsedAction
-from utils.constants import PARSER_DEFAULT_U, PARSER_DEFAULT_F
+from utils.constants import PARSER_DEFAULT_U, PARSER_DEFAULT_F, INVALID_ACTION_PENALTY
 
-INVALID_OUTPUT_PENALTY = -1.0
+INVALID_OUTPUT_PENALTY = -INVALID_ACTION_PENALTY
 
 _NUMBER_PATTERN = r"-?(?:\d+(?:\.\d*)?|\.\d+)"
 _U_TARGET_PATTERN = re.compile(r'(?i)["\']?u_target["\']?(?:\s*[:=]\s*|\s+)(' + _NUMBER_PATTERN + r')')

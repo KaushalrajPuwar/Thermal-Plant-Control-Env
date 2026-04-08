@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app import app
+from server.app import app
 
 # Create a TestClient instance based on your FastAPI app
 client = TestClient(app)

@@ -4,11 +4,17 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
+
 dependencies = [
     "huggingface-hub>=1.9.0",
     "openai>=2.30.0",
-    "openenv-core>=0.2.3",
+    "openenv-core>=0.2.0",
     "pytest>=8.4.2",
     "torch>=2.11.0",
     "transformers>=5.5.0",
+    "uvicorn>=0.43.0",
 ]
+
+[project.scripts]
+server = "server.app:main"
+

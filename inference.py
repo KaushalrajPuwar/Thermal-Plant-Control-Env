@@ -294,13 +294,31 @@ def main() -> None:
 					# clamp defensively
 					score = max(0.0, min(1.0, gscore))
 					if DEBUG:
-						from graders._metrics import compute_TE, compute_OS, compute_SV, compute_OC, compute_SL, compute_LP, compute_LS, compute_EMB, compute_RT, compute_RR, compute_failure_flag, compute_invalid_count
-						print(
-							f"[DEBUG] Grader Metrics: TE={compute_TE(trajectory):.3f} OS={compute_OS(trajectory):.3f} "
-							f"SV={compute_SV(trajectory):.3f} OC={compute_OC(trajectory):.3f} SL={compute_SL(trajectory):.3f} "
-							f"FF={compute_failure_flag(trajectory)} Invalids={compute_invalid_count(trajectory)}",
-							file=sys.stderr, flush=True
-						)
+						from graders._metrics import compute_TE, compute_OS, compute_SV, compute_OC, compute_SL, compute_LP, compute_LS, compute_EMB, compute_RT, compute_RR, compute_failure_flag, compute_invalid_count, normalize_metrics
+						import json
+						raw_metrics = {
+							"TE": compute_TE(trajectory),
+							"OS": compute_OS(trajectory),
+							"SV": compute_SV(trajectory),
+							"OC": compute_OC(trajectory),
+							"SL": compute_SL(trajectory),
+							"LP": compute_LP(trajectory),
+							"LS": compute_LS(trajectory),
+							"EMB": compute_EMB(trajectory),
+							"RT": compute_RT(trajectory),
+							"RR": compute_RR(trajectory),
+						}
+						norm_metrics = normalize_metrics(raw_metrics)
+						diag = {
+							"task": TASK_NAME,
+							"metrics_raw": raw_metrics,
+							"metrics_norm": norm_metrics,
+							"invalid_count": compute_invalid_count(trajectory),
+							"failure_flag": compute_failure_flag(trajectory),
+							"steps": steps_taken,
+						}
+						print(json.dumps(diag), file=sys.stderr, flush=True)
+
 				except Exception as e:
 					# Ignore grader errors and fall back to reward-based score
 					if DEBUG:

@@ -50,7 +50,7 @@ run_phase0_contract_checks() {
     require_file "scripts/smoke_test.sh"
 
     "$PYTHON_BIN" - <<'PY'
-from app import app
+from server.app import app
 
 required_routes = {"/reset", "/step", "/state"}
 present_routes = {route.path for route in app.routes}
@@ -61,7 +61,7 @@ PY
 
     output_file="$(mktemp)"
     trap 'rm -f "$output_file"' EXIT
-    HF_TOKEN="" MODEL_NAME="" API_BASE_URL="" "$PYTHON_BIN" inference.py >"$output_file"
+    HF_TOKEN="openenv-validate" MODEL_NAME="openenv-validate" API_BASE_URL="http://example.local" "$PYTHON_BIN" inference.py >"$output_file"
 
     "$PYTHON_BIN" - "$output_file" <<'PY'
 import pathlib

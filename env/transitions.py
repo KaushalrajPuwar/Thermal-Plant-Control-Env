@@ -367,6 +367,17 @@ def integration_step(state: ThermalPlantState, action: Dict[str, float]) -> Tupl
 	return next_state, reward, done, info
 
 
+def ensure_finite(state: ThermalPlantState) -> ThermalPlantState:
+	if getattr(C, "NONFINITE_HANDLING", "clamp") == "clamp":
+		if not math.isfinite(state.P): state.P = C.DEFAULT_STATE["P"]
+		if not math.isfinite(state.T): state.T = C.DEFAULT_STATE["T"]
+		if not math.isfinite(state.Pr): state.Pr = C.DEFAULT_STATE["Pr"]
+		if not math.isfinite(state.U): state.U = C.DEFAULT_STATE["U"]
+		if not math.isfinite(state.F): state.F = C.DEFAULT_STATE["F"]
+		if not math.isfinite(state.S): state.S = C.DEFAULT_STATE["S"]
+		if not math.isfinite(state.D): state.D = C.DEFAULT_STATE["D"]
+	return state
+
 def clamp_state(state: ThermalPlantState) -> ThermalPlantState:
 	state.U = clamp(state.U, C.U_BOUNDS[0], C.U_BOUNDS[1])
 	state.F = clamp(state.F, C.F_BOUNDS[0], C.F_BOUNDS[1])
@@ -375,7 +386,7 @@ def clamp_state(state: ThermalPlantState) -> ThermalPlantState:
 	state.Pr = clamp(state.Pr, C.PR_BOUNDS[0], C.PR_BOUNDS[1])
 	state.S = clamp(state.S, C.S_BOUNDS[0], C.S_BOUNDS[1])
 	state.D = clamp(state.D, C.D_BOUNDS[0], C.D_BOUNDS[1])
-	return state
+	return ensure_finite(state)
 
 
 def check_catastrophic(state: ThermalPlantState) -> Tuple[bool, str]:

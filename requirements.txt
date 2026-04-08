@@ -354,6 +354,7 @@ urllib3==2.6.3
     # via requests
 uvicorn==0.44.0
     # via
+    #   thermal-plant-control-env (pyproject.toml)
     #   fastmcp
     #   gradio
     #   mcp
