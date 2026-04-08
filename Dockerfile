@@ -11,12 +11,12 @@ COPY . /app
 # Using --no-cache-dir to reduce image size
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 8000 available to the world outside this container
-EXPOSE 8000
+# Make port 7860 available to the world outside this container
+EXPOSE 7860
 
 # Define environment variable to ensure Python outputs are sent straight to the terminal
 ENV PYTHONUNBUFFERED=1
 
 # Run app.py when the container launches
 # Use uvicorn to run the FastAPI application, making it accessible on all network interfaces
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
