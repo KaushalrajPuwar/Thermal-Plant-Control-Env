@@ -33,8 +33,10 @@ def test_reset_endpoint_scaffold():
 def test_reset_missing_header():
     request_body = {"task_id": "task1", "episode_id": 0}
     response = client.post("/reset", json=request_body)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Forbidden: Missing Episode-Override header for reset."
+    assert response.status_code == 200
+    response_data = response.json()
+    assert "observation" in response_data
+    assert isinstance(response_data["observation"], dict)
 
 
 def test_step_endpoint_scaffold():

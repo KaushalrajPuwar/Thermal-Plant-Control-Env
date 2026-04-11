@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional
-from fastapi import FastAPI, HTTPException, Request
 import os
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from env.api import (
@@ -36,7 +37,7 @@ def reset_endpoint(http_request: Request, body: Optional[ResetRequest] = None):
     task and episode ID. This is the starting point for any new episode.
     """
     if body is None:
-        body = ResetRequest()
+        body = ResetRequest(task_id="task1", episode_id=None)
         
     dev_token = http_request.headers.get(DEV_RESET_HEADER.lower())
     
@@ -111,7 +112,9 @@ def root():
 
 def main():
     import uvicorn
-    uvicorn.run("server.app:app", host="0.0.0.0", port=8000)
+
+    port = int(os.getenv("PORT", os.getenv("API_PORT", "7860")))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     main()

@@ -12,7 +12,7 @@ for arg in "$@"; do
     fi
 done
 
-BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
+BASE_URL="${BASE_URL:-http://127.0.0.1:7860}"
 PYTHON_BIN="${PYTHON_BIN:-}"
 
 if [[ -z "$PYTHON_BIN" ]]; then
@@ -28,9 +28,9 @@ fi
 
 SERVER_PID=""
 if [[ "$START_SERVER" == "1" ]]; then
-    if ! curl -sS "http://127.0.0.1:8000/" >/dev/null 2>&1; then
+    if ! curl -sS "http://127.0.0.1:7860/" >/dev/null 2>&1; then
         echo "Starting local server for smoke tests..."
-        "$PYTHON_BIN" -m uvicorn app:app --host 127.0.0.1 --port 8000 --log-level error &
+        "$PYTHON_BIN" -m uvicorn server.app:app --host 127.0.0.1 --port 7860 --log-level error &
         SERVER_PID=$!
         sleep 2
     fi

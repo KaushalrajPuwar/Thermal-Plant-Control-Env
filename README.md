@@ -4,8 +4,11 @@ emoji: 🏭
 colorFrom: red
 colorTo: yellow
 sdk: docker
-app_file: app.py
+app_port: 7860
+app_file: server/app.py
 pinned: false
+tags:
+  - openenv
 ---
 
 # Thermal Plant Control Environment (OpenEnv)
@@ -53,8 +56,10 @@ This benchmark features 4 predefined tasks with programmatic, deterministic grad
 docker build -t thermal-plant-control:latest .
 
 # Run the container
-docker run -p 8000:8000 thermal-plant-control:latest
+docker run -p 7860:7860 thermal-plant-control:latest
 ```
+
+The container listens on port `7860`. The helper script in [scripts/run_local.sh](scripts/run_local.sh) uses the same default mapping.
 
 ### Running Inference Baseline
 Ensure you have your environment variables configured locally or via `.env`:
