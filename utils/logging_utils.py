@@ -44,11 +44,11 @@ def log_step(record: StepLogRecord) -> None:
     )
 
 
-def log_end(success: bool, steps: int, rewards: Iterable[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: Iterable[float]) -> None:
     """Emit the required episode-end line."""
     rewards_string = ",".join(format_reward(reward) for reward in rewards)
     print(
-        f"[END] success={_bool_string(success)} steps={steps} rewards={rewards_string}",
+        f"[END] success={_bool_string(success)} steps={steps} score={format_reward(score)} rewards={rewards_string}",
         flush=True,
     )
 

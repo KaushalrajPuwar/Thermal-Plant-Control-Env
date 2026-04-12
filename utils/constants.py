@@ -227,7 +227,7 @@ HYSTERESIS_MARGIN = 0.02
 
 # Power dynamics coefficients
 P_GAIN = 0.8
-P_LOAD_COEF = 0.3
+P_LOAD_COEF = 0.15
 P_DEG_COEF = 0.6
 
 # Temperature dynamics coefficients
@@ -236,7 +236,7 @@ TEMP_EXP_P = 1.1
 TEMP_COOL_COEF = 0.06
 TEMP_EXP_F = 1.05
 TEMP_ENV_COOL = 0.01
-TEMP_DEG_COEF = 0.05
+TEMP_DEG_COEF = 0.10
 
 # Pressure dynamics coefficients
 PR_T_COEF = 0.2
@@ -245,7 +245,7 @@ PR_DAMP = 0.1
 
 # Stress dynamics coefficients - amplified for visibility
 STRESS_T_COEF = 0.08
-STRESS_U_OSC_COEF = 0.5
+STRESS_U_OSC_COEF = 0.8
 STRESS_DECAY = 0.04
 
 # Degradation dynamics coefficients - amplified for visibility

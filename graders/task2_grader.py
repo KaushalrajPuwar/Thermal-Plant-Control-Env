@@ -28,10 +28,10 @@ def grade(trajectory) -> float:
 	norm = normalize_metrics({"TE": te, "OS": os_, "LP": lp, "SV": sv})
 
 	score = 1.0
-	score -= 0.4 * norm.get("TE", 0.0)
-	score -= 0.2 * norm.get("OS", 0.0)
+	score -= 0.5 * norm.get("TE", 0.0)
+	score -= 0.3 * norm.get("OS", 0.0)
 	score -= 0.2 * norm.get("LP", 0.0)
-	score -= 0.2 * norm.get("SV", 0.0)
+	score -= 0.4 * norm.get("SV", 0.0)
 	score -= 0.3 * (1 if ff else 0)
 
 	score -= invalid_count * getattr(C, "INVALID_ACTION_PENALTY", 0.2)

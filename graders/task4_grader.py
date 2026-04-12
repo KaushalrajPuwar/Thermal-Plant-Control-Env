@@ -32,9 +32,9 @@ def grade(trajectory) -> float:
 
 	# Note: spec uses Norm_RT = Clamp(RT / N) where RT in 1..N
 	score = 1.0
-	score -= 0.3 * norm_rt
+	score -= 0.5 * norm_rt
 	score -= 0.2 * norm.get("RR", 0.0)
-	score -= 0.2 * norm.get("SV", 0.0)
+	score -= 0.4 * norm.get("SV", 0.0)
 	score -= 0.2 * norm.get("OC", 0.0)
 	score -= 0.3 * (1 if ff else 0)
 

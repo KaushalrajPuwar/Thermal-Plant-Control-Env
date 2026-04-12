@@ -29,7 +29,7 @@ def grade(trajectory) -> float:
 
 	score = 1.0
 	score -= 0.5 * norm.get("TE", 0.0)
-	score -= 0.2 * norm.get("SV", 0.0)
+	score -= 0.4 * norm.get("SV", 0.0)
 	score -= 0.2 * norm.get("OC", 0.0)
 	score -= 0.3 * (1 if ff else 0)
 

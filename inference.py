@@ -320,7 +320,7 @@ def run_episode(
             termination_reason=termination_reason,
         )
         
-        log_end(success=success, steps=steps_taken, rewards=rewards)
+        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
 def main() -> None:

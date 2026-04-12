@@ -28,9 +28,9 @@ def grade(trajectory) -> float:
 	norm = normalize_metrics({"TE": te, "LS": ls, "SV": sv})
 
 	score = 1.0
-	score -= 0.3 * norm.get("TE", 0.0)
+	score -= 0.5 * norm.get("TE", 0.0)
 	score -= 0.3 * norm.get("LS", 0.0)
-	score -= 0.2 * norm.get("SV", 0.0)
+	score -= 0.4 * norm.get("SV", 0.0)
 	score += 0.2 * float(emb)
 	score -= 0.3 * (1 if ff else 0)
 
