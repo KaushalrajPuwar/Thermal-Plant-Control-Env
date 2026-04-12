@@ -14,60 +14,62 @@ tags:
 
 # 🏭 Thermal Plant Control Environment (OpenEnv)
 
-[![OpenEnv](https://img.shields.io/badge/OpenEnv-v1.0-blue.svg?style=for-the-badge)](https://github.com/meta-pytorch/OpenEnv)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg?style=for-the-badge)](https://www.python.org/downloads/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
+[![OpenEnv](https://img.shields.io/badge/OpenEnv-v1.0-blue?style=for-the-badge)](https://github.com/meta-pytorch/OpenEnv)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue?style=for-the-badge)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 [![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue?style=for-the-badge)](https://huggingface.co/spaces/kaushalrajpuwar/thermal-plant-control)
 
-> **Testing how AI models handle high-stakes physical systems.**
+> **Evaluating LLM Reasoning in Safety-Critical Cyber-Physical Systems.**
 
 ---
 
 ## 📖 Overview
 
-The **Thermal Plant Control Environment** is an accurate and consistent simulation designed to test how well AI can manage industrial systems. You must balance power production against real physical limits (**Temperature**, **Pressure**, and **Stress**) while dealing with slow control valves and long-term equipment wear.
- 
- This environment follows the **Meta PyTorch OpenEnv** rules and tests if AI can plan ahead and keep the system safe during sudden changes.
+The **Thermal Plant Control Environment** is a high-fidelity, deterministic simulation designed to test the limits of agentic reasoning in industrial automation. Agents must manage a simulated power plant, balancing energy production (**Power Output**) against strict physical constraints (**Temperature**, **Pressure**, and **Mechanical Stress**) under the influence of delayed actuator responses and long-term hardware degradation.
 
-### 🧩 Why this is hard
- This isn't a simple logic puzzle. To win, the AI must understand:
- - **Heat Delay:** Heat doesn't disappear instantly; you must start cooling *before* the temperature spikes.
- - **Valve Lag:** Controls are slow. If you just react to what you see, the system will shake and become unstable.
- - **Everything is connected:** Changing the fuel level affects temperature and pressure at the same time.
+This environment is fully compliant with the **Meta PyTorch OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
+
+This environment is fully compliant with the **Meta PyTorch OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
+
+### 🧩 Benchmark Sensitivity & Precision
+Unlike discrete logic puzzles, this environment measures **Control Resolution**. 
+- **Thermal Inertia:** Heat doesn't dissipate instantly; models must "cool ahead" to prevent spikes.
+- **Actuator Lag:** Inputs are smoothed by a 0.5-alpha delay. Reactive models will oscillate; reasoning models will anticipate.
+- **Coupled Variables:** Changing fuel input affects temperature AND pressure simultaneously, requiring multi-variable optimization.
 
 ---
 
 ## 🛠️ System Dynamics
 
-### 🧪 How the parts are connected
- Heat and cooling determine the core temperature, which then affects the internal pressure and system wear.
- 
- ```mermaid
- graph LR
-     subgraph "Controls"
-         U[Fuel/Power]
-         F[Cooling Flow]
-     end
-     
-     subgraph "Plant Core"
-         Core((Steam Core))
-     end
-     
-     subgraph "Current State"
-         T[Temperature]
-         Pr[Pressure]
-         S[Wear Stress]
-     end
- 
-     U --> Core
-     F --> Core
-     Core --> T
-     T --> Pr
-     Pr --> S
-     S -.-> |"Damage"| F
-     
-     L((Power Demand)) -.-> Core
- ```
+### 🧪 Plant Schematic (Topology)
+The system is modeled as a **2nd-order coupled thermal-hydraulic loop**. Energy balance ($\dot{Q}_{net} = \alpha U - \beta F$) drives the core temperature ($T$), which induces non-linear pressure transients ($P$) and cumulative hardware stress ($S$).
+
+```mermaid
+graph LR
+    subgraph "Actuation"
+        U[Fuel/Power]
+        F[Coolating Flux]
+    end
+    
+    subgraph "Core Physics"
+        Core((Thermal Core))
+    end
+    
+    subgraph "State Vector"
+        T[Temperature T]
+        Pr[Pressure P]
+        S[Stress S]
+    end
+
+    U --> |"+Q_in (Fuel)"| Core
+    F --> |"-Q_out (Coolant)"| Core
+    Core --> |"dT/dt"| T
+    T --> |"dP/dt"| Pr
+    Pr --> |"d S/dt"| S
+    S -.-> |"Degradation D"| F
+    
+    L((Load L)) -.-> |"Disturbance"| Core
+```
 
 ### 🔍 Observation Space
 
@@ -102,51 +104,51 @@ The agent must output a JSON object containing exactly two continuous values `[0
 
 The challenge scales through four distinct operational regimes. Every task is deterministic and reproducible.
 
-### 🟢 Task 1: Steady Operation
- Can the AI keep the plant stable when nothing is changing?
- | Task Setting | Target | What to watch for |
- | :--- | :--- | :--- |
- | **Constant Demand** | Keep power steady. | Stable power output. |
- | **No Surprises** | Deal with slow valves. | Position matching. |
- 
- ### 🟡 Task 2: Changing Demand
- Can the AI handle sudden spikes in power requirements?
- | Task Setting | Target | What to watch for |
- | :--- | :--- | :--- |
- | **Sudden Load Jump** | Move power to new levels. | Avoid overshooting the target. |
- | **Scaling Up/Down** | Settle quickly. | Smooth transitions. |
- 
- ### 🟠 Task 3: Hot-Start Emergency
- Can the AI save a system that is already over-heating?
- | Task Setting | Target | What to watch for |
- | :--- | :--- | :--- |
- | **Over-Heat Spawn** | Cool it down immediately. | Temperature safety limit. |
- | **Pressure Control** | Prevent equipment damage. | Mechanical stress levels. |
- 
- ### 🔴 Task 4: Equipment Failure & Shock
- The ultimate test: a sudden heat wave hits while the cooling system is broken.
- | Task Setting | Target | What to watch for |
- | :--- | :--- | :--- |
- | **Heat Wave** | Survive a massive temperature jump. | Pressure limits. |
- | **Broken Cooling** | Manage with weak equipment. | Valve limits. |
+### 🟢 Task 1: Stable Baseline Operation
+Establishes the agent's ability to maintain equilibrium in a "Cold-Start" or "Steady-State" regime.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Static Demand** | Maintain zero-error tracking. | Stability of Power output `P`. |
+| **Zero Disturbance** | Verify actuator lag compensation. | Valve position `U` vs `L`. |
+
+### 🟡 Task 2: Load Following
+Simulates a grid-level demand spike requiring rapid power scaling.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Instant Step-Change** | Transition power output to new setpoints. | Overshoot (`OS`) management. |
+| **Dynamic Scaling** | Minimize settling time during transients. | Tracking Error (`TE`) recovery. |
+
+### 🟠 Task 3: Preemptive Constraint Management
+A high-pressure scenario where the agent spawns into a system near its thermal limit.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Near-Critical Spawn** | Immediate heat mitigation (Emergency Cooling). | Temperature `T` safety buffer. |
+| **Boundary Control** | Prevent stress leakage at high pressures. | Stress accumulation `S`. |
+
+### 🔴 Task 4: Fault Recovery with Degradation
+The ultimate stress test. Simultaneous hardware failure and external thermal shock.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Athermal Shock** | Recover from sudden energy injection. | Pressure rate-of-change. |
+| **Hardware Wear** | Manage degraded coolant efficiency (D=0.6). | Valve saturation limits. |
 
 ---
 
-## 📊 AI vs Human-Written Rules
- 
- We compare advanced AI models against standard math-based rules (the Baseline).
- 
- | Task ID | **Baseline Rules** | **Llama-3.3-70B** | Improvement |
- | :--- | :---: | :---: | :---: |
- | `task1` | 0.95 | **0.95** | --- |
- | `task2` | 0.77 | **0.84** | **+9%** |
- | `task3` | 0.57 | **0.75** | **+31%** |
- | `task4` | 0.48 | **0.74** | **+54%** |
- 
- > [!TIP]
- > **Why the AI wins:** Simple rules can handle easy tasks (Task 1), but they fail when things get complicated. The AI is **9% to 54% better** in the hard tasks because it can **think ahead** and stay safe under pressure.
- 
- **Observation:** While standard rules work for steady operation, they fail during emergencies. The AI identifies the need for maximum cooling long before a simple script would react.
+## 📊 Performance & Discriminative Power
+
+We compare high-frontier models against a hardcoded **Rule-Based Baseline** to measure the reasoning "delta." 
+
+| Task ID | **Heuristic Baseline** | **Llama-3.3-70B** | Improvement |
+| :--- | :---: | :---: | :---: |
+| `task1` | 0.95 | **0.95** | --- |
+| `task2` | 0.77 | **0.84** | **+9%** |
+| `task3` | 0.57 | **0.75** | **+31%** |
+| `task4` | 0.48 | **0.74** | **+54%** |
+
+> [!TIP]
+> **The Success Reversal:** Note that while rule-based logic is sufficient for steady-state tracking (Task 1), it lacks the 'Predictive Intuition' required for high-stress recovery. The **9%-54% improvement** of the LLM over the baseline validates this repository as a true test of **Physical Reasoning** rather than simple instruction following.
+
+**Observation:** While standard rules (If/Then) can solve Task 1 and 2, they fail catastrophically in Tasks 3 and 4 once physics delays and non-linear shocks are introduced. The Llama-3.3-70B model demonstrates **superior recovery logic**, identifying the need for "Maximum Cooling" well before the baseline script reacts.
 
 > [!IMPORTANT]
 > **Anti-Coasting Fix:** We have strictly defined the evaluation window to begin **ONLY after** the disturbance injection. Models can no longer inflate their scores with early "stable" steps.
