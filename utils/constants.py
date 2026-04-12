@@ -109,7 +109,7 @@ INIT_T_F_GAIN = 0.30
 TASK_STARTUP_PROFILES: Dict[str, Dict[str, float]] = {
 	"task1": {
 		"aL": 0.60,
-		"sL": 0.00, # Fixed load start to match constant task target
+		"sL": 0.10, # Randomized load start for dynamic evaluation
 		"aD": 0.02,
 		"sD": 0.03,
 		"aT": 0.08,

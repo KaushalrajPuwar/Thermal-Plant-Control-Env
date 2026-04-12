@@ -299,6 +299,8 @@ def main() -> None:
         loop_error = str(exc)
     finally:
         score = compute_normalized_score(rewards, max_steps)
+        # Clamp fallback score to (0.01, 0.99) and round to 2 decimals
+        score = round(max(0.01, min(0.99, score)), 2)
         try:
             from graders.registry import grader_registry
             registry = grader_registry()
@@ -306,7 +308,7 @@ def main() -> None:
             if grader_fn is not None:
                 try:
                     gscore = float(grader_fn(trajectory))
-                    score = max(0.0, min(1.0, gscore))
+                    score = round(max(0.01, min(0.99, gscore)), 2)
                 except Exception as e:
                     if DEBUG:
                         print(f"[DEBUG] Grader exception: {e}", file=sys.stderr, flush=True)

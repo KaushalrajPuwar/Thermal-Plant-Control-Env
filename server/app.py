@@ -81,6 +81,9 @@ def step_endpoint(request: StepRequest):
         
         if invalid_flag:
             info["invalid_action"] = True
+
+        # Round reward to 2 decimals for judge-facing output
+        reward = round(float(reward), 2)
             
         raw_state = env_interface.get_state()
         return StepResponse(
@@ -105,6 +108,12 @@ def state_endpoint():
         return StateResponse(state=state)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get state: {e}")
+
+
+@app.get("/health")
+def health():
+    """Health check endpoint declared in openenv.yaml."""
+    return {"status": "healthy"}
 
 
 @app.get("/")

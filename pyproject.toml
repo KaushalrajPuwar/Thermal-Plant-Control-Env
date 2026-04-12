@@ -1,7 +1,7 @@
 [project]
 name = "thermal-plant-control-env"
 version = "0.1.0"
-description = "Add your description here"
+description = "An OpenEnv-compliant agentic benchmark for controlling a simulated thermal power plant with trade-offs between power tracking, thermal safety, and system stress."
 readme = "README.md"
 requires-python = ">=3.13"
 
@@ -18,18 +18,6 @@ dependencies = [
 [project.scripts]
 server = "server.app:main"
 
-[project.entry-points."openenv.tasks"]
-task1 = "tasks.task1:Task1"
-task2 = "tasks.task2:Task2"
-task3 = "tasks.task3:Task3"
-task4 = "tasks.task4:Task4"
-
-[project.entry-points."openenv.graders"]
-task1 = "graders.task1_grader:grade"
-task2 = "graders.task2_grader:grade"
-task3 = "graders.task3_grader:grade"
-task4 = "graders.task4_grader:grade"
-
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -37,4 +25,3 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["*"]
-

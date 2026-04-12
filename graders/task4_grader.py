@@ -40,5 +40,5 @@ def grade(trajectory) -> float:
 
 	score -= invalid_count * getattr(C, "INVALID_ACTION_PENALTY", 0.2)
 
-	# Clamp strictly within (0, 1) — boundary values can fail portal validation
-	return float(max(1e-4, min(1.0 - 1e-4, score)))
+	# Clamp strictly within (0.01, 0.99) — so 2-decimal output never shows 0.00 or 1.00
+	return round(float(max(0.01, min(0.99, score))), 2)
