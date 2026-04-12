@@ -224,7 +224,7 @@ docker run -p 7860:7860 thermal-plant:latest
 
 ---
 
-## 🤝 The Team
+## 🤝 Team Magneto's Cheetos
 
 *   [**KaushalrajPuwar**](https://github.com/KaushalrajPuwar)
 *   [**freakun0025**](https://github.com/freakun0025)
