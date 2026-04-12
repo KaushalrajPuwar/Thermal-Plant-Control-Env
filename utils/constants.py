@@ -157,7 +157,7 @@ TASK_STARTUP_PROFILES: Dict[str, Dict[str, float]] = {
 		"s_base": 0.20,
 		"s_gain": 0.18,
 		"f_bias": 0.12,
-		"t_task_bias": 0.35, # Extra direct heat
+		"t_task_bias": 0.50, # Extra direct heat
 		"soft_t_cap": 1.05,  # Prevent environment from rescuing the initial state
 		"soft_pr_cap": 1.10,
 	},
@@ -175,7 +175,7 @@ TASK_STARTUP_PROFILES: Dict[str, Dict[str, float]] = {
 		"s_base": 0.05,
 		"s_gain": 0.14,
 		"f_bias": 0.32,
-		"t_task_bias": 0.02,
+		"t_task_bias": 0.40,
 		"soft_t_cap": 0.85,
 		"soft_pr_cap": 0.89,
 	},
@@ -206,8 +206,8 @@ STRESS_RATE = 0.2
 DEGRADATION_RATE = 0.06
 
 # Failure thresholds.
-FAIL_T = 1.3
-FAIL_PR = 1.3
+FAIL_T = 1.5
+FAIL_PR = 1.5
 FAIL_S = 1.3
 
 # Reward coefficients.
@@ -216,8 +216,8 @@ OSCILLATION_PENALTY_COEF = 0.2
 STRESS_PENALTY_COEF = 0.3
 
 # Safety soft thresholds for reward penalties.
-SOFT_T = 1.0
-SOFT_PR = 1.0
+SOFT_T = 0.95
+SOFT_PR = 0.95
 
 # --- Newly Added Phase 2 Constants ---
 ACTUATOR_INERTIA_ALPHA = 0.5

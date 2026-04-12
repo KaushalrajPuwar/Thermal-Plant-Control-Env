@@ -111,7 +111,13 @@ def compute_RT(trajectory) -> float:
     N = s["N"]
     if N == 0:
         return 0.0
-    for idx, (p, l, t) in enumerate(zip(s["P"], s["L"], s["T"])):
+    # Fault occurs at step 4 (index 3). We only count recovery after the fault.
+    fault_idx = 3
+    if N <= fault_idx:
+        return float(N)
+        
+    for idx in range(fault_idx, N):
+        p, l, t = s["P"][idx], s["L"][idx], s["T"][idx]
         if abs(p - l) < 0.1 and t < 1.0:
             return float(idx + 1)
     return float(N)
