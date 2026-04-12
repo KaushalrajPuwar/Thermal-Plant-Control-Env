@@ -25,11 +25,9 @@ tags:
 
 ## 📖 Overview
 
-The **Thermal Plant Control Environment** is a high-fidelity, deterministic simulation designed to test the limits of agentic reasoning in industrial automation. Agents must manage a simulated power plant, balancing energy production (**Power Output**) against strict physical constraints (**Temperature**, **Pressure**, and **Mechanical Stress**) under the influence of delayed actuator responses and long-term hardware degradation.
+The **Thermal Plant Control Environment** is a high-fidelity, deterministic simulation designed to test agentic reasoning in industrial automation. Agents must manage a simulated power plant, balancing energy production (**Power Output**) against strict physical constraints (**Temperature**, **Pressure**, and **Mechanical Stress**) under the influence of delayed actuator responses and long-term hardware degradation.
 
-This environment is fully compliant with the **Meta PyTorch OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
-
-This environment is fully compliant with the **Meta PyTorch OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
+This environment is fully compliant with the **OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
 
 ### 🧩 Benchmark Sensitivity & Precision
 Unlike discrete logic puzzles, this environment measures **Control Resolution**. 
@@ -145,13 +143,13 @@ We compare high-frontier models against a hardcoded **Rule-Based Baseline** to m
 | `task3` | 0.57 | **0.75** | **+31%** |
 | `task4` | 0.48 | **0.74** | **+54%** |
 
-> [!TIP]
+> [!NOTE]
 > **The Success Reversal:** Note that while rule-based logic is sufficient for steady-state tracking (Task 1), it lacks the 'Predictive Intuition' required for high-stress recovery. The **9%-54% improvement** of the LLM over the baseline validates this repository as a true test of **Physical Reasoning** rather than simple instruction following.
-
-**Observation:** While standard rules (If/Then) can solve Task 1 and 2, they fail catastrophically in Tasks 3 and 4 once physics delays and non-linear shocks are introduced. The Llama-3.3-70B model demonstrates **superior recovery logic**, identifying the need for "Maximum Cooling" well before the baseline script reacts.
+>
+> High-frontier models like Llama-3.3-70B demonstrate significant resilience in Task 4, with performance remaining remarkably consistent with the Hard-tier baseline.
 
 > [!IMPORTANT]
-> **Anti-Coasting Fix:** We have strictly defined the evaluation window to begin **ONLY after** the disturbance injection. Models can no longer inflate their scores with early "stable" steps.
+> **Anti-Coasting Fix:** We have strictly defined the evaluation window to begin **ONLY after** the disturbance injection. Models can not inflate their scores with early "stable" steps.
 
 ---
 
