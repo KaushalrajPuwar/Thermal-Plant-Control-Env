@@ -1,7 +1,9 @@
 """Task 2: Load Following.
 
-Track changing load with minimal lag and overshoot.
-Step changes: t=1..3: L=0.5, t=4..6: L=0.8, t=7..N: L=0.6.
+This 'Intermediate' tier task evaluates the agent's agility in responding 
+to external load transients. The system undergoes two significant step 
+changes (to 0.8 and then to 0.6), testing the ability to minimise overshoot 
+and settling time.
 """
 
 from typing import Dict, Optional, Tuple, Any
@@ -14,7 +16,13 @@ class PeriodicPolicy(AgentPolicy):
     """Tracker robust to periodic disturbances."""
     
     def get_action(self, observation: Dict[str, float]) -> Dict[str, float]:
-        # Track power to load aggressively to minimize lag
+        """
+        Baseline policy for Load Following.
+        
+        Employs aggressive proportional gain to minimise lag during transients, 
+        balanced by thermal safety thresholds.
+        """
+        # Track power to load aggressively to minimise lag
         u_target = min(max(observation["U"] + 0.4 * (observation["L"] - observation["P"]), 0.1), 0.9)
         f_target = 0.5
         if observation["T"] > 0.8:

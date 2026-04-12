@@ -1,4 +1,10 @@
-"""Shared constants for the thermal plant environment."""
+"""Shared constants and physics coefficients for the Thermal Plant Environment.
+
+This module serves as the centralised configuration for simulation dynamics, 
+safety thresholds, and evaluation metrics. All coefficients are calibrated 
+to ensure a challenging, non-linear control environment with bit-perfect 
+determinism.
+"""
 
 from __future__ import annotations
 
@@ -106,6 +112,9 @@ INIT_T_P_GAIN = 0.45
 INIT_T_F_GAIN = 0.30
 
 # Task regime maps.
+# These profiles define the initialisation parameters for each task. 
+# We surgically adjust 't_task_bias' and 'f_bias' to close 'Agent Coasting' 
+# loopholes, forcing models to actively manage the plant from Step 1.
 TASK_STARTUP_PROFILES: Dict[str, Dict[str, float]] = {
 	"task1": {
 		"aL": 0.60,
@@ -219,7 +228,9 @@ STRESS_PENALTY_COEF = 0.3
 SOFT_T = 0.95
 SOFT_PR = 0.95
 
-# --- Newly Added Phase 2 Constants ---
+# --- Numerical Integration & Physics Engine (Phase 2) ---
+# We utilise a 2nd-order Runge-Kutta (RK2) integrator for superior 
+# numerical stability during rapid thermal transients.
 ACTUATOR_INERTIA_ALPHA = 0.5
 INTEGRATOR = "RK2"
 DT = 1.0
@@ -264,7 +275,9 @@ PARSER_DEFAULT_U = 0.5
 PARSER_DEFAULT_F = 0.5
 INCLUDE_PARSE_ERROR_IN_STEP = True
 
-# Grader normalization scales and penalties
+# Grader standardisation scales.
+# Raw metrics are divided by these 'Sigma' values to produce normalised 
+# scores in the [0, 1] range.
 METRIC_NORM_SCALES = {
 	"TE": 0.5,
 	"OS": 0.5,

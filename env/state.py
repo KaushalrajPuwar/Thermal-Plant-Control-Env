@@ -20,14 +20,19 @@ from utils.constants import (
 
 @dataclass
 class ThermalPlantState:
-	"""Canonical environment state shared across core, API, and tests.
-
-	Bounds:
-	- P, L, U, F, D in [0, 1]
-	- T, Pr, S in [0, 1.5]
-
-	U and F are inherited internal plant conditions at episode start.
-	The agent still controls runtime targets through U_target and F_target.
+	"""
+	Canonical representation of the thermal plant's internal state.
+	
+	This dataclass provides a centralised contract for the system variables 
+	shared across the physics core, the API boundary, and the evaluation graders.
+	
+	Operational Bounds & Units:
+	- P, L, U, F, D: Normalised units in [0, 1].
+	- T, Pr, S: Normalised units in [0, 1.5] (Safety threshold at 1.0).
+	
+	Note: U (Control) and F (Cooling) in this state represent the *actual* 
+	physical positions of the valves, subject to inertia, as opposed to the 
+	*target* positions requested by the agent.
 	"""
 
 	P: float = DEFAULT_P

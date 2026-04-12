@@ -1,6 +1,8 @@
 """Core thermal plant environment implementation.
 
-This module provides the contract surface for reset(), step(), and state().
+This module provides the primary stateful interface for the simulation lifecycle, 
+including reset(), step(), and state access. It maintains the internal state 
+integrity and orchestrates task-level disturbances.
 """
 
 from __future__ import annotations
@@ -25,18 +27,18 @@ from tasks.registry import get_task
 
 
 class ThermalPlantEnv:
-	"""Deterministic thermal plant environment core.
-
-	Determinism assumptions:
-	- No random number generation is used in state transitions.
-	- Floating-point operations are executed in a fixed order per step.
-	- Identical initial state and action sequence produce identical trajectories.
-
-	Step return contract:
-	- observation: Dict[str, float] rounded for agent-facing display
-		- reward: float
-		- done: bool
-		- info: Dict[str, Any] with keys: error, step_count, invalid_action
+	"""
+	Deterministic thermal plant environment core.
+	
+	This class implements the 'Source of Truth' for the plant simulation. It 
+	is designed for high-fidelity evaluation of control agents, where bit-perfect 
+	reproducibility is a mandatory requirement.
+	
+	Determinism Guarantees:
+	- All stochasticity is derived from a task-specific deterministic seed stream.
+	- Floating-point operations maintain a consistent order of execution.
+	- Identical action sequences applied to identical initial states yield 
+	  identical trajectories across separate evaluation processes.
 	"""
 
 	def __init__(
@@ -62,7 +64,13 @@ class ThermalPlantEnv:
 		self._step_count = 0
 
 	def reset(self, task_id: Optional[str] = None, episode_id: Optional[int] = None) -> Dict[str, float]:
-		"""Reset environment state and return a task-aware initial observation."""
+		"""
+		Initialise the environment to a fresh state for a specific task and episode.
+		
+		This method invokes the Coupled Regime Mapping logic to ensure the plant 
+		starts in a physically consistent state. This is critical for preventing 
+		'Easy Starts' that could bias the evaluation of model reasoning.
+		"""
 		if task_id is not None:
 			self.task_id = task_id
 		if episode_id is not None:
@@ -91,7 +99,15 @@ class ThermalPlantEnv:
 		return self._state.to_dict()
 
 	def step(self, action: Dict[str, Any]) -> Tuple[Dict[str, float], float, bool, Dict[str, Any]]:
-		"""Advance one deterministic time step using the action dictionary."""
+		"""
+		Advance the simulation by one discrete time step.
+		
+		The step routine follows a strict update order:
+		1. Apply task-specific disturbances (Load changes, thermal faults).
+		2. Clamp the resulting state.
+		3. Execute the RK2 integration step using the agent's action targets.
+		4. Update internal state and return rounded observations for model consumption.
+		"""
 		invalid_action = False
 		error_msg: Optional[str] = None
 		

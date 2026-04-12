@@ -1,6 +1,8 @@
-"""Task 3 grader: Preemptive constraint management.
+"""Task 3 grader: Preemptive Constraint Management.
 
-Implements specification from context/06_tasks_and_graders.md.
+Evaluates the agent's ability to maintain thermal stability under restricted 
+coolant conditions. Scoring prioritises keeping T below 0.9 to minimise 
+Stress Accumulation (SL).
 """
 
 from __future__ import annotations

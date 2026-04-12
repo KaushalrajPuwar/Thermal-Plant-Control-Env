@@ -1,4 +1,9 @@
-"""Judge-facing stdout helpers with frozen line formats."""
+"""Canonical logging utilities for judge-vetted stdout communication.
+
+This module implements the strict logging contract required by the external 
+evaluation portal. Any modification to these line formats may result in 
+parsing failures during the autograding phase.
+"""
 
 from __future__ import annotations
 
@@ -31,7 +36,9 @@ def canonical_action_string(u_target: float, f_target: float) -> str:
 
 
 def log_start(task: str, env: str, model: str) -> None:
-    """Emit the required episode-start line."""
+    """
+    Emit the required [START] delimiter following the OpenEnv specification.
+    """
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
@@ -45,7 +52,10 @@ def log_step(record: StepLogRecord) -> None:
 
 
 def log_end(success: bool, steps: int, score: float, rewards: Iterable[float]) -> None:
-    """Emit the required episode-end line."""
+    """
+    Emit the required [END] delimiter, providing a comma-separated credit 
+    assignment sequence for final score calculation.
+    """
     rewards_string = ",".join(format_reward(reward) for reward in rewards)
     print(
         f"[END] success={_bool_string(success)} steps={steps} score={format_reward(score)} rewards={rewards_string}",

@@ -1,4 +1,9 @@
-from __future__ import annotations
+"""FastAPI entry point for the OpenEnv-compliant Thermal Plant Server.
+
+This module provides the HTTP interface for resetting the environment and 
+executing transition steps. It strictly adheres to the OpenEnv API v1.0 
+specification, ensuring compatibility with the cross-model evaluation portal.
+"""
 
 import os
 
@@ -30,8 +35,10 @@ env_interface = ConcreteOpenEnvInterface()
 @app.post("/reset", response_model=ResetResponse)
 async def reset_endpoint(http_request: Request):
     """
-    Resets the environment. Accepts optional task_id/episode_id in body,
-    defaults to task1 with the standard episode if not provided.
+    Reset the plant to a deterministic initial state.
+    
+    Accepts an optional task_id and episode_id. This is the entry point for 
+    starting new evaluation episodes.
     """
     try:
         try:
@@ -91,8 +98,9 @@ def step_endpoint(request: StepRequest):
 @app.get("/state", response_model=StateResponse)
 def state_endpoint():
     """
-    Retrieves the complete, unrounded internal state of the environment.
-    This is useful for debugging and grading.
+    Retrieve the full-precision, unrounded internal state of the plant.
+    
+    Intended for debugging, diagnostics, and high-fidelity grading.
     """
     try:
         state = env_interface.get_state()

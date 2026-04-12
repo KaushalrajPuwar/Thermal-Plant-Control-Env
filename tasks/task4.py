@@ -1,7 +1,9 @@
 """Task 4: Fault Recovery with Degradation.
 
-L=0.6 mostly. Disturbance at t=4: T spike (+0.3).
-Degradation reduces cooling effectiveness over time.
+This 'Extra Hard' tier task evaluates the agent's ability to maintain plant 
+stability under additive environmental stress. It introduces a major thermal 
+shock (T-spike) at solar-noon (Step 4) while simultaneously modelling cumulative 
+hardware degradation that reduces coolant effectiveness.
 """
 
 from typing import Dict, Optional, Tuple, Any
@@ -36,6 +38,13 @@ class Task4(ThermalPlantTask):
         self._seed = int(episode_id)
 
     def apply_disturbance(self, state: ThermalPlantState, step: int) -> Tuple[Dict[str, float], Optional[Dict[str, Any]]]:
+        """
+        Inject non-linear disturbances into the plant state.
+        
+        At Step 4, a +0.5 normalised thermal spike is injected to simulate a 
+        major equipment fault. The agent must perform emergency cooling to 
+        prevent catastrophic system stress.
+        """
         deltas = {}
         event = {"type": "constant_load"}
 
@@ -47,7 +56,7 @@ class Task4(ThermalPlantTask):
             deltas["T"] = 0.5
             event = {"type": "thermal_fault", "T_delta": deltas["T"]}
             
-        # Ongoing degradation to simulate reduced cooling effectiveness
+        # Constant hardware degradation to simulate reduced mechanical reliability
         deltas["D"] = 0.02
 
         return deltas, event

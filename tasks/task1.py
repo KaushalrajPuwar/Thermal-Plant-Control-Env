@@ -1,6 +1,8 @@
 """Task 1: Stable Baseline Operation.
 
-Maintain P close to L while staying safe and smooth. Constant load pattern L_t = 0.6.
+This 'Entry' tier task evaluates the agent's ability to maintain a steady 
+state under constant load requirements. Success is defined by tracking 
+accuracy (P=L) and minimal control oscillation.
 """
 
 from typing import Dict, Optional, Tuple, Any
@@ -13,6 +15,12 @@ class BaselinePolicy(AgentPolicy):
     """A simple rule-based tracker."""
     
     def get_action(self, observation: Dict[str, float]) -> Dict[str, float]:
+        """
+        Baseline heuristic policy for the Stable Operation task.
+        
+        This policy implements a simple proportional-tracking controller with 
+        a safety-first thermal override.
+        """
         # Track power to load
         u_target = observation["L"]
         if observation["P"] < observation["L"] - 0.05:
@@ -51,7 +59,12 @@ class Task1(ThermalPlantTask):
         return deltas, {"type": "constant_load", "target_L": target_L}
 
     def is_completed(self, state: ThermalPlantState, step_count: int) -> bool:
-        # User requested early stop when P=L.
+        """
+        Termination condition for Task 1.
+        
+        The episode concludes successfully if the agent maintains P within 
+        the tolerance band of the load target for at least 3 steps.
+        """
         tracking_error = abs(state.P - state.L)
         # End task immediately if error is very small (converged to load target)
         return tracking_error <= 0.02 and step_count >= 3

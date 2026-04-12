@@ -1,4 +1,8 @@
-"""Task configuration, interfaces, and shared types."""
+"""Configuration and base classes for the Thermal Plant Task hierarchy.
+
+This module defines the abstract contract for disturbance injection and 
+baseline policy provision, ensuring a consistent interface for the benchmarker.
+"""
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple, Any

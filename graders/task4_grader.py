@@ -1,6 +1,8 @@
 """Task 4 grader: Fault recovery with degradation.
 
-Implements the recovery-time based grader from context/06_tasks_and_graders.md.
+The most challenging grader in the benchmark. It specifically measures 
+the Recovery Time (RT) following a catastrophic thermal shock, while 
+simultaneously penalising safety excursions (SV) and control oscillations.
 """
 
 from __future__ import annotations

@@ -1,7 +1,8 @@
 """Task 3: Preemptive Constraint Management.
 
-L_t = moderately high constant (0.7).
-Stress accumulates when T > 0.9. Agent must reduce risk BEFORE visible failure.
+This 'Hard' tier task focuses on thermal stability under restricted coolant 
+conditions. It evaluates whether the agent can recognise and mitigate 
+stress accumulation (T > 0.9) before it triggers a catastrophic failure.
 """
 
 from typing import Dict, Optional, Tuple, Any
@@ -14,6 +15,13 @@ class RampPolicy(AgentPolicy):
     """Proportional tracker."""
     
     def get_action(self, observation: Dict[str, float]) -> Dict[str, float]:
+        """
+        Baseline policy for Preemptive Management.
+        
+        This policy implements a thermal guard that prioritises cooling 
+        saturation and power reduction when approaching the critical 0.9 
+        limit.
+        """
         # Track power to load proportionally
         u_target = min(observation["U"] + 0.4 * (observation["L"] - observation["P"]), 1.0)
         u_target = max(u_target, 0.0)

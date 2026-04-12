@@ -1,4 +1,9 @@
-"""Central task discovery and instantiation."""
+"""Central task discovery and instantiation registry.
+
+Provides a unified mapping between canonical task IDs and their respective 
+implementation classes, supporting dynamic task switching during sequential 
+evaluation runs.
+"""
 
 from typing import Dict, Type, Optional
 
@@ -30,7 +35,12 @@ def normalize_task_id(raw: str) -> str:
 
 
 def get_task(task_id: str) -> ThermalPlantTask:
-    """Instantiate and return the canonical task."""
+    """
+    Instantiate and return the requested task object.
+    
+    This function normalises the task_id and performs a lookup against the 
+    global task registry. If the task is not found, it raises a ValueError.
+    """
     task_id = normalize_task_id(task_id)
     cls = _TASK_CLASSES.get(task_id)
     if not cls:

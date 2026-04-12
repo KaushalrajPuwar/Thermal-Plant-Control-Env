@@ -1,7 +1,8 @@
-"""Metric extraction helpers for graders.
+"""Metric extraction helpers for environment graders.
 
-Functions accept an `EpisodeTrajectory` (utils.schemas.EpisodeTrajectory) and compute
-the canonical raw metrics described in context/06_tasks_and_graders.md.
+Functions in this module accept an `EpisodeTrajectory` and compute the 
+canonical raw metrics used for evaluation. We prioritise numerical precision 
+and strict adherence to the task specifications.
 """
 
 from typing import Dict, List, Any
@@ -54,6 +55,12 @@ def compute_OS(trajectory) -> float:
 
 
 def compute_SV(trajectory) -> float:
+    """
+    Compute Safety Violation (SV) as the mean excursion beyond plant limits.
+    
+    SV represents the severity of structural stress on the containment 
+    vessels (T > 1.0 or Pr > 1.0).
+    """
     s = _extract(trajectory)
     N = s["N"]
     if N == 0:
@@ -107,6 +114,16 @@ def compute_EMB(trajectory) -> float:
 
 
 def compute_RT(trajectory) -> float:
+    """
+    Compute Recovery Time (RT) following a thermal shock.
+    
+    RT measures the number of steps required to return to a stable operating 
+    regime (|P - L| < 0.1 and T < 1.0) after an emergency disturbance. 
+    
+    Engineering Note: To prevent early-episode safety bias, the scan strictly 
+    starts from Step 4 (Index 3), which is the verified fault injection point 
+    for the 'Extra Hard' tier tasks.
+    """
     s = _extract(trajectory)
     N = s["N"]
     if N == 0:
@@ -157,6 +174,13 @@ def compute_invalid_count(trajectory) -> int:
 
 
 def normalize_metrics(metrics: Dict[str, float], scales: Dict[str, float] = None) -> Dict[str, float]:
+    """
+    Normalise raw physical metrics into the [0, 1] range for unified grading.
+    
+    This uses the 'Sigma-Standardisation' coefficients defined in the global 
+    constants. If a metric exceeds the expected scale, it is saturated at 1.0 
+    to maintain grader stability.
+    """
     if scales is None:
         scales = getattr(C, "METRIC_NORM_SCALES", {}) or {}
     normalized: Dict[str, float] = {}

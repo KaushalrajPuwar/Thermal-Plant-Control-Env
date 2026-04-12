@@ -1,6 +1,8 @@
-"""Task 2 grader: Load following.
+"""Task 2 grader: Load Following.
 
-Formula from context/06_tasks_and_graders.md. Returns a float in [0,1].
+This grader evaluates the agent's agility in response to load transients. 
+Scoring prioritises minimising overshoot (OS) and tracking error (TE) 
+during rapid transitions.
 """
 
 from __future__ import annotations

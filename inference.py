@@ -1,4 +1,10 @@
-"""Hackathon inference entrypoint with frozen parser and logging contracts."""
+"""Sequential inference and evaluation pipeline for Thermal Plant Control.
+
+This module orchestrates the multi-task evaluation for Large Language Models. 
+It strictly enforces the OpenEnv logging contract, manages the deterministic 
+simulation lifecycle, and provides high-fidelity trajectory summarisation 
+suitable for autograding at scale.
+"""
 
 from __future__ import annotations
 from utils.schemas import EpisodeTrajectory, StepLogRecord, TrajectoryStep, TrajectorySummary
@@ -21,7 +27,7 @@ load_dotenv(override=True)
 BENCHMARK = "thermal-plant-control"
 ALL_TASK_IDS = ["task1", "task2", "task3", "task4"]
 
-TEMPERATURE = 0.2
+TEMPERATURE = 0.0
 MAX_TOKENS = 120
 SUCCESS_SCORE_THRESHOLD = 0.7
 DEFAULT_ACTION = {
@@ -111,8 +117,9 @@ def get_model_response(
                 {"role": "user", "content": build_user_prompt(
                     task_description, step, observation, last_reward, history)},
             ],
-            temperature=TEMPERATURE,
+            temperature=0.0,
             max_tokens=MAX_TOKENS,
+            seed=42,
         )
         return (completion.choices[0].message.content or "").strip()
     except Exception as exc:
@@ -149,7 +156,13 @@ def run_episode(
     model_name: str,
     debug: bool,
 ) -> None:
-    """Run a single task episode and emit [START]...[STEP]...[END] to stdout."""
+    """
+    Execute a single evaluation episode for a specific task and model.
+    
+    This function manages the interaction loop between the environment and the 
+    LLM, capturing all observations and actions into a structured Trajectory 
+    object while emitting real-time logs for the external judge.
+    """
     model_name_for_logs = model_name or "unset"
     last_valid_action: Optional[Dict[str, float]] = None
     observation = env.reset(task_id=task_id, episode_id=episode_id)
@@ -309,6 +322,7 @@ def run_episode(
         termination_reason = determine_termination_reason(
             loop_error=loop_error, done=done, steps_taken=steps_taken, max_steps=max_steps)
             
+        # Finalise the trajectory summary for this task
         trajectory.summary = TrajectorySummary(
             task=task_id,
             benchmark=BENCHMARK,
@@ -320,6 +334,7 @@ def run_episode(
             termination_reason=termination_reason,
         )
         
+        # Emit final [END] log to stdout following the strict autograder contract
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 

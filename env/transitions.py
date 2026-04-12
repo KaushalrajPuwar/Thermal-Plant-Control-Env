@@ -1,15 +1,15 @@
 """Pure transition functions for deterministic thermal plant dynamics.
 
-Update order contract used by env core:
-1) clamp action targets
-2) actuator inertia (U, F)
-3) power (P)
-4) degradation (D) used by current-step cooling
-5) temperature (T)
-6) pressure (Pr)
-7) stress (S)
-8) clamp state bounds
-9) done checks and reward computation
+This module implements the core Ordinary Differential Equations (ODEs) and numerical 
+integration logic that drive the simulation. We prioritise physical stability 
+and bit-perfect determinism across evaluation environments.
+
+Update order contract used by environment core:
+1) Clamp action targets to physical actuator bounds.
+2) Update actuator state (U, F) using first-order inertia (alpha smoothing).
+3) Compute next state (P, T, Pr, S, D) using Runge-Kutta 2nd Order (RK2) integration.
+4) Clamp state to global safety bounds.
+5) Execute done checks and return reward signals.
 """
 
 from __future__ import annotations
@@ -92,7 +92,13 @@ def clamp_action_targets(u_target: float, f_target: float) -> Tuple[float, float
 
 
 def _xorshift32(seed: int) -> int:
-	"""Return the next deterministic 32-bit xorshift state."""
+	"""
+	Return the next state in a deterministic 32-bit xorshift pseudorandom sequence.
+	
+	This provides a hardware-agnostic entropy stream, ensuring that plant 
+	trajectories remain perfectly reproducible regardless of the underlying 
+	OS or floating-point environment.
+	"""
 	seed &= 0xFFFFFFFF
 	seed ^= (seed << 13) & 0xFFFFFFFF
 	seed ^= (seed >> 17) & 0xFFFFFFFF
@@ -101,7 +107,14 @@ def _xorshift32(seed: int) -> int:
 
 
 def _seed_stream(task_id: str, episode_id: int, count: int = 8) -> Tuple[float, ...]:
-	"""Generate deterministic floats in [0, 1] from task and episode identifiers."""
+	"""
+	Generate a deterministic sequence of floats in [0, 1] derived from task 
+	and episode identifiers.
+	
+	This generator acts as the foundation for the 'Pseudo-Random' initialisation 
+	of plant regimes, ensuring that specific episode IDs map to fixed control 
+	challenges.
+	"""
 	if task_id not in TASK_CODE:
 		raise ValueError(f"Unknown task_id '{task_id}'. Expected one of {tuple(TASK_CODE)}.")
 
@@ -206,7 +219,15 @@ def _solve_thermal_state(power: float, cooling: float, degradation: float, stres
 
 
 def build_coherent_initial_state(task_id: str, episode_id: int) -> ThermalPlantState:
-	"""Build a deterministic, task-aware startup state from a coupled regime map."""
+	"""
+	Construct a deterministic, task-aware startup state using Coupled Regime Mapping.
+	
+	Instead of randomising state variables independently, we solve for a physically 
+	consistent operating point (Regime). If the plant is initialised at high power, 
+	the coupled temperature and pressure defaults are solved to be proportionally high, 
+	ensuring the agent inherits a realistic 'hot' plant state rather than a physically 
+	impossible combination of values.
+	"""
 	profile = _task_profile(task_id)
 	samples = _seed_stream(task_id=task_id, episode_id=int(episode_id))
 	regime = _compute_regime_variables(profile=profile, samples=samples)
@@ -306,39 +327,49 @@ def integration_step(state: ThermalPlantState, action: Dict[str, float]) -> Tupl
 	
 	delta_u = next_u - state.U
 	
-	# 3) RK2 Integration for P, T, Pr, S, D
+	# 3) Numerical Integration for P, T, Pr, S, D
+	# We use a 2nd-order Runge-Kutta (Midpoint) scheme to solve the non-linear 
+	# ODE system. This ensures better stability and convergence than simple 
+	# Euler integration, particularly regarding thermal pressure spikes.
 	x = [state.P, state.T, state.Pr, state.S, state.D]
 	
 	def der(x_vec):
+		"""
+		Differential equations defining the plant's rate of change (dx/dt).
+		"""
 		P, T, Pr, S, D = x_vec
 		
-		# Power: target tracking for U, minus load drag, minus degradation drag
+		# Power: Modelling target tracking for U, subject to load-drag and degradation losses.
 		dP = C.P_GAIN * (next_u - P) - C.P_LOAD_COEF * (P - state.L) - C.P_DEG_COEF * P * D
 		
-		# Temperature: dT/dt = a*P^1.1 - b*F^1.05 - c*(T - T_env) - e*D*T
-		# T_env is 0.0 effectively
+		# Temperature: Balance of power-generated heat vs active cooling and environmental dissipation.
+		# Modelling effective cooling efficiency D (Degradation) as a linear loss factor.
 		dT = C.TEMP_POWER_COEF * (P ** C.TEMP_EXP_P if P > 0 else 0) \
 			 - C.TEMP_COOL_COEF * (next_f ** C.TEMP_EXP_F if next_f > 0 else 0) \
 			 - C.TEMP_ENV_COOL * T - C.TEMP_DEG_COEF * D * T
 			 
-		# Pressure: dPr/dt = p1*tanh(p2*(T - T_ref)) + p3*P^1.05 - p4*Pr
+		# Pressure: Pressure dynamics modelled as a function of temperature gradient and power load.
 		dPr = C.PR_T_COEF * math.tanh(C.PR_T_COEF * (T - 0.5)) + C.PR_P_COEF * (P ** 1.05 if P > 0 else 0) - C.PR_DAMP * Pr
 		
-		# Stress: Accumulate from temperature baseline + control effort
+		# Stress: Cumulative mechanical strain derived from thermal spikes and control oscillation.
 		dS = C.STRESS_T_COEF * max(0.0, T - 0.4) + C.STRESS_U_OSC_COEF * (delta_u ** 2) - C.STRESS_DECAY * S
 		
-		# Degradation: dD/dt = depends linearly on Stress, natural recovery
+		# Degradation: Modelling hardware wear as the time-integral of system stress.
 		dD = C.DEG_FROM_S_COEF * S - C.DEG_RECOVERY_RATE * D
 		
 		return [dP, dT, dPr, dS, dD]
 		
 	if C.INTEGRATOR == "RK2":
+		# Step 1: Compute initial slopes (k1)
 		k1 = der(x)
+		# Step 2: Estimate midpoint state
 		x_temp = [x[i] + C.DT * k1[i] for i in range(5)]
+		# Step 3: Compute midpoint slopes (k2)
 		k2 = der(x_temp)
+		# Step 4: Combine for final update
 		x_next = [x[i] + (C.DT / 2.0) * (k1[i] + k2[i]) for i in range(5)]
 	else:
-		# Fallback Euler
+		# Fallback to 1st-order Euler for low-fidelity simulations
 		k1 = der(x)
 		x_next = [x[i] + C.DT * k1[i] for i in range(5)]
 		
@@ -390,6 +421,12 @@ def clamp_state(state: ThermalPlantState) -> ThermalPlantState:
 
 
 def check_catastrophic(state: ThermalPlantState) -> Tuple[bool, str]:
+	"""
+	Check for safety boundary breaches that trigger immediate simulation termination.
+	
+	We implement a 'Hysteresis Margin' to prevent simulation flickering when 
+	operating near the extreme limits.
+	"""
 	if state.T > C.FAIL_T + C.HYSTERESIS_MARGIN:
 		return True, "Catastrophic failure: Temperature limit exceeded."
 	if state.Pr > C.FAIL_PR + C.HYSTERESIS_MARGIN:
@@ -400,23 +437,29 @@ def check_catastrophic(state: ThermalPlantState) -> Tuple[bool, str]:
 
 
 def compute_reward(prev_state: ThermalPlantState, state: ThermalPlantState, delta_u: float) -> float:
+	"""
+	Calculate the step-wise reward as a weighted composite of tracking and safety.
+	
+	The reward logic uses smooth linear decay for tracking errors to provide 
+	a clear gradient for model feedback (avoiding the 'cliff' discontinuity 
+	of binary success).
+	"""
 	# Tracking reward: smooth linear decay as error increases
 	# At error=0: r_track=1.0, at error=0.2: r_track=0.0, at error=0.4: r_track=-1.0
-	# This avoids the cliff discontinuity and provides smooth gradient for learning
 	tracking_error = abs(state.P - state.L)
-	r_track = 1.0 - tracking_error / 0.2  # Linear decay over 0.2 error window
+	r_track = 1.0 - tracking_error / 0.2
 	
-	# Safety penalty: only penalize when approaching limits
+	# Safety penalty: only penalised when approaching limits (SOFT_T / SOFT_PR)
 	safety_violation = max(0.0, state.T - C.SOFT_T) + max(0.0, state.Pr - C.SOFT_PR)
 	r_safety = C.SAFETY_PENALTY_COEF * safety_violation
 	
-	# Stability penalty: penalize excessive control changes
+	# Stability penalty: penalise excessive control changes (Delta-U oscillations)
 	r_stability = C.OSCILLATION_PENALTY_COEF * (delta_u ** 2)
 	
-	# Stress penalty: penalize high stress accumulation
+	# Stress penalty: penalise operational strain accumulation
 	r_stress = C.STRESS_PENALTY_COEF * state.S if state.S > 0.1 else 0.0
 	
-	# Combine: tracking reward + safety/stress penalty - control oscillation
+	# Final Composite Reward Calculation
 	reward = C.W_TRACK * r_track - C.W_SAFETY * r_safety - C.W_STABILITY * r_stability - 0.2 * r_stress
 	return clamp(reward, -10.0, 10.0)
 

@@ -11,7 +11,13 @@ ActionSource = Literal["json", "fallback", "previous_valid", "default"]
 
 @dataclass(frozen=True)
 class ParsedAction:
-    """Canonical parser result consumed by the inference loop."""
+    """
+    Standardised container for model-derived actions after parsing.
+    
+    This object encapsulates the raw LLM output and the resulting environmental 
+    targets, along with detailed metadata regarding the parsing strategy 
+    (json vs fallback) and any penalties applied.
+    """
 
     u_target: float
     f_target: float
@@ -74,7 +80,13 @@ class TrajectorySummary:
 
 @dataclass
 class EpisodeTrajectory:
-    """Complete episode artifact captured during inference."""
+    """
+    High-fidelity capture of a complete evaluation episode.
+    
+    This object serves as the primary artifact for the autograder, providing 
+    the full-precision internal state history required for complex metric 
+    calculation.
+    """
 
     task: str
     benchmark: str

@@ -46,9 +46,10 @@ class ConcreteOpenEnvInterface(OpenEnvInterface):
     """
     Concrete implementation of the OpenEnvInterface.
 
-    This class holds a singleton instance of the core environment and maps the
-    interface methods to the actual environment's methods, acting as a
-    decoupling layer between the API and the environment logic.
+    This class provides a thread-safe singleton wrapper for the core thermal 
+    plant environment. It decouples the API layer from the simulation 
+    internals, ensuring consistent state management across sequential 
+    evaluation tasks.
     """
 
     _instance: "ConcreteOpenEnvInterface" | None = None
