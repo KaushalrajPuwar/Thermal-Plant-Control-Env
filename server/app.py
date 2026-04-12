@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from env.api import (
     ActionRequest,
-    ResetRequest,
     ResetResponse,
     StateResponse,
     StepRequest,
@@ -16,9 +14,7 @@ from env.api import (
 )
 from env.interface import ConcreteOpenEnvInterface
 from tasks.registry import normalize_task_id
-from utils.constants import DEFAULT_EXTERNAL_EPISODE_ID, DEV_RESET_TOKEN_ENV, DEFAULT_EPISODE_ID
-
-DEV_RESET_HEADER = os.getenv("DEV_RESET_HEADER", "Episode-Override")
+from utils.constants import DEFAULT_EXTERNAL_EPISODE_ID
 
 # Initialize the FastAPI application
 app = FastAPI(
@@ -32,29 +28,24 @@ env_interface = ConcreteOpenEnvInterface()
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset_endpoint(http_request: Request, body: Optional[ResetRequest] = None):
+async def reset_endpoint(http_request: Request):
     """
-    Resets the environment to a new initial state based on the provided
-    task and episode ID. This is the starting point for any new episode.
+    Resets the environment. Accepts optional task_id/episode_id in body,
+    defaults to task1 with the standard episode if not provided.
     """
-    if body is None:
-        body = ResetRequest(task_id="task1", episode_id=None)
-        
-    dev_token = http_request.headers.get(DEV_RESET_HEADER.lower())
-    
     try:
-        env_token = os.getenv(DEV_RESET_TOKEN_ENV)
+        try:
+            body = await http_request.json()
+        except Exception:
+            body = {}
 
-        if dev_token and env_token and dev_token == env_token:
-            # Developer-authorized request: honor provided episode_id if present
-            # If developer didn't provide an episode id, fall back to the
-            # canonical developer default from `utils.constants`.
-            episode_id = body.episode_id if body.episode_id is not None else DEFAULT_EPISODE_ID
-        else:
-            # Public evaluator: always use the fixed external episode id
+        task_id = normalize_task_id(body.get("task_id", "task1") or "task1")
+        episode_id = body.get("episode_id", None)
+        if episode_id is None:
             episode_id = DEFAULT_EXTERNAL_EPISODE_ID
+        else:
+            episode_id = int(episode_id)
 
-        task_id = normalize_task_id(body.task_id)
         observation = env_interface.reset(task_id=task_id, episode_id=episode_id)
         return ResetResponse(observation=observation)
     except Exception as e:

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 # =============================================================================
 class ResetRequest(BaseModel):
     """Request body for the /reset endpoint."""
-    task_id: str = Field("task1", description="The ID of the task to run, e.g., 'task1'.")
+    task_id: Optional[str] = Field("task1", description="The ID of the task to run, e.g., 'task1'.")
     episode_id: Optional[int] = Field(None, description="Optional episode id.")
 
 

@@ -19,10 +19,11 @@ load_dotenv(override=True)
 
 
 BENCHMARK = "thermal-plant-control"
+ALL_TASK_IDS = ["task1", "task2", "task3", "task4"]
 
 TEMPERATURE = 0.2
 MAX_TOKENS = 120
-SUCCESS_SCORE_THRESHOLD = 0.10
+SUCCESS_SCORE_THRESHOLD = 0.80
 DEFAULT_ACTION = {
     "U_target": C.PARSER_DEFAULT_U,
     "F_target": C.PARSER_DEFAULT_F,
@@ -33,7 +34,6 @@ HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 IMAGE_NAME = os.getenv("IMAGE_NAME", "thermal-plant-control:latest")
-TASK_NAME = os.getenv("THERMAL_PLANT_TASK", C.DEFAULT_TASK_ID)
 EPISODE_ID = int(os.getenv("THERMAL_PLANT_EPISODE_ID",
                  str(C.DEFAULT_EPISODE_ID)))
 DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
@@ -94,16 +94,18 @@ def build_user_prompt(
 
 def get_model_response(
     client: OpenAI,
+    model_name: str,
     task_description: str,
     step: int,
     observation: Dict[str, float],
     last_reward: float,
     history: List[str],
+    debug: bool = False,
 ) -> str:
     """Request the next action from the configured model."""
     try:
         completion = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=model_name,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": build_user_prompt(
@@ -114,7 +116,7 @@ def get_model_response(
         )
         return (completion.choices[0].message.content or "").strip()
     except Exception as exc:
-        if DEBUG:
+        if debug:
             print(
                 f"[DEBUG] model call exception: {exc}", file=sys.stderr, flush=True)
         return ""
@@ -139,65 +141,52 @@ def determine_termination_reason(loop_error: Optional[str], done: bool, steps_ta
     return "stopped"
 
 
-def main() -> None:
-    """Run a full deterministic inference episode and always emit end logs."""
-    TASK_NAME = os.getenv("THERMAL_PLANT_TASK", C.DEFAULT_TASK_ID)
-    MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
-    API_BASE_URL = os.getenv(
-        "API_BASE_URL", "https://router.huggingface.co/v1")
-    IMAGE_NAME = os.getenv("IMAGE_NAME", "thermal-plant-control:latest")
-    EPISODE_ID = int(os.getenv("THERMAL_PLANT_EPISODE_ID",
-                     str(C.DEFAULT_EPISODE_ID)))
-    HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-    DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
-
-    model_name_for_logs = MODEL_NAME or "unset"
-    env = ConcreteOpenEnvInterface()
-    client: Optional[OpenAI] = None
+def run_episode(
+    task_id: str,
+    episode_id: int,
+    env: ConcreteOpenEnvInterface,
+    client: Optional[OpenAI],
+    model_name: str,
+    debug: bool,
+) -> None:
+    """Run a single task episode and emit [START]...[STEP]...[END] to stdout."""
+    model_name_for_logs = model_name or "unset"
     last_valid_action: Optional[Dict[str, float]] = None
-    observation = env.reset(task_id=TASK_NAME, episode_id=EPISODE_ID)
-    max_steps = getattr(env._env, "max_steps",
-                        12) if hasattr(env, "_env") else 12
+    observation = env.reset(task_id=task_id, episode_id=episode_id)
+    max_steps = getattr(env._env, "max_steps", 12) if hasattr(env, "_env") else 12
     history: List[str] = []
     rewards: List[float] = []
-    score = 0.0
     success = False
     steps_taken = 0
     done = False
     last_reward = 0.0
     loop_error: Optional[str] = None
-    trajectory = EpisodeTrajectory(
-        task=TASK_NAME, benchmark=BENCHMARK, model=model_name_for_logs)
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=model_name_for_logs)
+    trajectory = EpisodeTrajectory(
+        task=task_id, benchmark=BENCHMARK, model=model_name_for_logs)
+
+    log_start(task=task_id, env=BENCHMARK, model=model_name_for_logs)
 
     try:
-        task_obj = get_task(TASK_NAME)
+        task_obj = get_task(task_id)
         task_description = getattr(
             task_obj, "description", "Optimal Thermal Plant Control")
     except Exception:
         task_description = "Optimal Thermal Plant Control"
 
     try:
-        if HF_TOKEN and MODEL_NAME and API_BASE_URL:
-            client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
-        if DEBUG and client is None:
-            print(
-                f"[DEBUG] OpenAI client configured? HF_TOKEN={bool(HF_TOKEN)} MODEL_NAME={bool(MODEL_NAME)} API_BASE_URL={bool(API_BASE_URL)}",
-                file=sys.stderr,
-                flush=True,
-            )
-
         for step in range(1, max_steps + 1):
             raw_response = ""
             if client is not None:
                 raw_response = get_model_response(
                     client=client,
+                    model_name=model_name,
                     task_description=task_description,
                     step=step,
                     observation=observation,
                     last_reward=last_reward,
                     history=history,
+                    debug=debug,
                 )
 
             parsed_action = parse_llm_action(
@@ -207,10 +196,10 @@ def main() -> None:
             )
             canonical_action = parsed_action.to_action_dict()
 
-            if DEBUG:
+            if debug:
                 print(file=sys.stderr)
                 print(
-                    f"[DEBUG] step={step} prompt_observation={_format_observation(observation)}",
+                    f"[DEBUG] task={task_id} step={step} prompt_observation={_format_observation(observation)}",
                     file=sys.stderr,
                     flush=True,
                 )
@@ -230,7 +219,7 @@ def main() -> None:
             total_reward = env_reward + parsed_action.penalty_applied
             error = info.get("error")
 
-            if DEBUG:
+            if debug:
                 print(
                     f"[DEBUG] step={step} post_observation={_format_observation(observation)} "
                     f"raw_state={env.get_state()} env_reward={env_reward:.2f} total_reward={total_reward:.2f} done={done} info={info}",
@@ -299,27 +288,29 @@ def main() -> None:
         loop_error = str(exc)
     finally:
         score = compute_normalized_score(rewards, max_steps)
-        # Clamp fallback score to (0.01, 0.99) and round to 2 decimals
         score = round(max(0.01, min(0.99, score)), 2)
         try:
             from graders.registry import grader_registry
             registry = grader_registry()
-            grader_fn = registry.get(TASK_NAME) if registry is not None else None
+            grader_fn = registry.get(task_id) if registry is not None else None
             if grader_fn is not None:
                 try:
                     gscore = float(grader_fn(trajectory))
                     score = round(max(0.01, min(0.99, gscore)), 2)
                 except Exception as e:
-                    if DEBUG:
+                    if debug:
                         print(f"[DEBUG] Grader exception: {e}", file=sys.stderr, flush=True)
         except Exception as e:
-            if DEBUG:
+            if debug:
                 print(f"[DEBUG] Grader registry exception: {e}", file=sys.stderr, flush=True)
+
         success = score >= SUCCESS_SCORE_THRESHOLD
+        
         termination_reason = determine_termination_reason(
             loop_error=loop_error, done=done, steps_taken=steps_taken, max_steps=max_steps)
+            
         trajectory.summary = TrajectorySummary(
-            task=TASK_NAME,
+            task=task_id,
             benchmark=BENCHMARK,
             model=model_name_for_logs,
             total_steps=steps_taken,
@@ -328,8 +319,34 @@ def main() -> None:
             final_score=score,
             termination_reason=termination_reason,
         )
-        log_end(success=success, steps=steps_taken,
-                score=score, rewards=rewards)
+        
+        log_end(success=success, steps=steps_taken, rewards=rewards)
+
+
+def main() -> None:
+    """Run all tasks sequentially, emitting [START]...[END] for each."""
+    env = ConcreteOpenEnvInterface()
+    client: Optional[OpenAI] = None
+
+    if HF_TOKEN and MODEL_NAME and API_BASE_URL:
+        client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+
+    if DEBUG and client is None:
+        print(
+            f"[DEBUG] OpenAI client configured? HF_TOKEN={bool(HF_TOKEN)} MODEL_NAME={bool(MODEL_NAME)} API_BASE_URL={bool(API_BASE_URL)}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+    for task_id in ALL_TASK_IDS:
+        run_episode(
+            task_id=task_id,
+            episode_id=EPISODE_ID,
+            env=env,
+            client=client,
+            model_name=MODEL_NAME,
+            debug=DEBUG,
+        )
 
 
 if __name__ == "__main__":
