@@ -23,11 +23,19 @@ tags:
 
 ---
 
+## ⚡ Problem Statement: Industrial Grid Resilience
+
+In a modern electrical grid, **Thermal Power Plants** (Coal, Natural Gas, or Nuclear Steam Turbines) provide the critical "Base Load" that keeps the grid stable. However, as demand fluctuates or renewable supply (wind/solar) suddenly drops, these massive physical systems must scale their output rapidly without exceeding safety-critical thermal limits.
+
+This environment simulates a **High-Fidelity Steam Turbine Cycle**. An LLM agent acts as the Lead Plant Controller, managing the balance between fuel input and cooling flux. A single mistake—such as failing to anticipate thermal inertia during a load spike—can lead to **Steam Vessel Over-pressurisation** or **Catastrophic Core Failure**, resulting in a grid-wide blackout.
+
+---
+
 ## 📖 Overview
 
-The **Thermal Plant Control Environment** is a high-fidelity, deterministic simulation designed to test agentic reasoning in industrial automation. Agents must manage a simulated power plant, balancing energy production (**Power Output**) against strict physical constraints (**Temperature**, **Pressure**, and **Mechanical Stress**) under the influence of delayed actuator responses and long-term hardware degradation.
+The **Thermal Plant Control Environment** is a deterministic OpenEnv benchmark designed to evaluate agentic reasoning in complex industrial loops. It enforces strict physical consistency across sequential episodes, measuring an agent's ability to navigate non-linear system responses, actuator lag, and cumulative hardware degradation.
 
-This environment is fully compliant with the **OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
+This environment is fully compliant with the **OpenEnv** specification, providing a standardized platform for testing LLMs on multi-step optimization and preemptive safety management.
 
 ### 🧩 Benchmark Sensitivity & Precision
 Unlike discrete logic puzzles, this environment measures **Control Resolution**. 
@@ -96,6 +104,20 @@ The agent must output a JSON object containing exactly two continuous values `[0
 > [!NOTE]
 > **Actuator Inertia:** The system implements a 0.5 alpha smoothing. Your target input does not jump the valve instantly; the system exponentially approaches your target over multiple steps. Anticipation is key.
 
+### 📐 Reward Logic & Mathematics
+
+The environment utilizes a **Composite Physical Reward Function** that penalizes both deviations from the target and breaches of structural safety. The per-step reward $r_t$ is defined as:
+
+$$r_t = 1.0 - (w_{te} \cdot TE_{norm} + w_{sv} \cdot SV_{norm} + w_{oc} \cdot OC_{norm})$$
+
+| Component | Metric | Weight | Purpose |
+| :--- | :--- | :---: | :--- |
+| **TE** | Tracking Error | **0.50** | Precision in matching the required grid load. |
+| **SV** | Safety Violation | **0.40** | Magnitude of Temperature/Pressure excursions. |
+| **OC** | Oscillation | **0.10** | Actuator fatigue caused by erratic valve changes. |
+
+**Catastrophic Failure:** If Temperature ($T$), Pressure ($Pr$), or Stress ($S$) exceed the hard **1.5x failure limit**, the environment triggers an immediate `done=true` with a **-5.0 Terminal Penalty**.
+
 ---
 
 ## 🏆 Standalone Benchmark Tasks
@@ -150,6 +172,14 @@ We compare high-frontier models against a hardcoded **Rule-Based Baseline** to m
 
 > [!IMPORTANT]
 > **Anti-Coasting Fix:** We have strictly defined the evaluation window to begin **ONLY after** the disturbance injection. Models can not inflate their scores with early "stable" steps.
+
+### 🧠 The AI Agent: In-Context Reinforcement Learning
+
+Unlike traditional controllers, the LLM agent operates as an **In-Context RL Learner**. It leverages the high-resolution state history provided in the `OpenEnv` observation loop to refine its control strategy across the episode.
+
+- **Non-Linear Reasoning:** The agent must internalize the "Actuator Lag" and "Thermal Inertia" from previous steps to time its cooling flux *before* a spike occurs.
+- **Strategic Buffering:** In Task 3, models demonstrate the ability to sacrifice tracking precision (TE) in exchange for maintaining a "Safety Buffer" (SV) near the thermal boundaries.
+- **Feedback Sensitivity:** By observing the `reward` signal provided at each step, the model identifies the "Sensitivity" of the specific plant instance and adapts its Gain ($K_p$) on-the-fly.
 
 ---
 
