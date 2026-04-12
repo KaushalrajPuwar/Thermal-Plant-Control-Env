@@ -1,16 +1,31 @@
 # openenv.yaml
 # Defines the OpenEnv-compliant metadata for the thermal plant benchmark.
 
-# The name of the benchmark. This should be a unique, descriptive identifier.
+spec_version: 1
 name: thermal-plant-control
-
-# A brief, one-sentence description of the benchmark's goal.
 description: A benchmark for controlling a simulated thermal power plant with trade-offs between power output, efficiency, and system stress.
+type: space
+runtime: fastapi
+app: server.app:app
+port: 7860
 
-# The Python module and function that returns the task registry dictionary.
-# The format is `path.to.module:function_name`.
-tasks: tasks.registry:task_registry
+tasks:
+  - id: task1
+    name: Stable Baseline Operation
+    description: Maintain power close to a constant load of 0.6 while staying safe and smooth.
+    grader: graders.task1_grader:grade
 
-# The Python module and function that returns the grader registry dictionary.
-# The format is `path.to.module:function_name`.
-graders: graders.registry:grader_registry
+  - id: task2
+    name: Load Following
+    description: Track step changes in required load (0.5 -> 0.8 -> 0.6) with minimal lag and overshoot.
+    grader: graders.task2_grader:grade
+
+  - id: task3
+    name: Preemptive Constraint Management
+    description: Manage moderately high load (0.7) and prevent stress accumulation by keeping Temperature below 0.9 under restricted coolant conditions.
+    grader: graders.task3_grader:grade
+
+  - id: task4
+    name: Fault Recovery with Degradation
+    description: Recover from a major thermal spike at step 4 while managing ongoing system degradation.
+    grader: graders.task4_grader:grade

@@ -18,6 +18,7 @@ __MACOSX
 # Local  files
 .github
 plan.md
+context
 
 # Test artifacts
 .pytest_cache/

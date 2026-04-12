@@ -15,6 +15,7 @@ from env.api import (
     StepResponse,
 )
 from env.interface import ConcreteOpenEnvInterface
+from tasks.registry import normalize_task_id
 from utils.constants import DEFAULT_EXTERNAL_EPISODE_ID, DEV_RESET_TOKEN_ENV, DEFAULT_EPISODE_ID
 
 DEV_RESET_HEADER = os.getenv("DEV_RESET_HEADER", "Episode-Override")
@@ -53,7 +54,8 @@ def reset_endpoint(http_request: Request, body: Optional[ResetRequest] = None):
             # Public evaluator: always use the fixed external episode id
             episode_id = DEFAULT_EXTERNAL_EPISODE_ID
 
-        observation = env_interface.reset(task_id=body.task_id, episode_id=episode_id)
+        task_id = normalize_task_id(body.task_id)
+        observation = env_interface.reset(task_id=task_id, episode_id=episode_id)
         return ResetResponse(observation=observation)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reset environment: {e}")
