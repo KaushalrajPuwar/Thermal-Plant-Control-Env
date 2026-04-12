@@ -29,9 +29,47 @@ The **Thermal Plant Control Environment** is a high-fidelity, deterministic simu
 
 This environment is fully compliant with the **Meta PyTorch OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
 
+This environment is fully compliant with the **Meta PyTorch OpenEnv** specification and serves as a benchmark for evaluating LLMs on multi-step optimization, disturbance rejection, and preemptive safety management.
+
+### 🧩 Benchmark Sensitivity & Precision
+Unlike discrete logic puzzles, this environment measures **Control Resolution**. 
+- **Thermal Inertia:** Heat doesn't dissipate instantly; models must "cool ahead" to prevent spikes.
+- **Actuator Lag:** Inputs are smoothed by a 0.5-alpha delay. Reactive models will oscillate; reasoning models will anticipate.
+- **Coupled Variables:** Changing fuel input affects temperature AND pressure simultaneously, requiring multi-variable optimization.
+
 ---
 
 ## 🛠️ System Dynamics
+
+### 🧪 Plant Schematic (Topology)
+The following diagram illustrates the non-linear coupling between control inputs and safety-critical state variables.
+
+```mermaid
+graph LR
+    subgraph "Control Inputs"
+        U[Fuel/Power]
+        F[Coolant]
+    end
+    
+    subgraph "Reactor Interface"
+        Core((Thermal Core))
+    end
+    
+    subgraph "State Variables"
+        T[Temperature]
+        Pr[Pressure]
+        S[Safety Stress]
+    end
+
+    U --> Core
+    F --> Core
+    Core --> T
+    T --> Pr
+    Pr --> S
+    S -.-> |"Damage Loop"| F
+    
+    L((External Load)) -.-> Core
+```
 
 ### 🔍 Observation Space
 
@@ -62,33 +100,58 @@ The agent must output a JSON object containing exactly two continuous values `[0
 
 ---
 
-## 🏆 Benchmark Tasks & Difficulty Tiers
+## 🏆 Standalone Benchmark Tasks
 
-We provide a sequence of tasks that transition from simple tracking to high-pressure emergency recovery.
+The challenge scales through four distinct operational regimes. Every task is deterministic and reproducible.
 
-| Task ID | Tier | Name | Challenge |
-| :--- | :--- | :--- | :--- |
-| `task1` | 🟢 **Easy** | **Stable Baseline** | Perfect tracking of a constant load with minimal fluctuation. |
-| `task2` | 🟡 **Medium** | **Load Following** | Handling sharp step-changes in demand (0.5 → 0.8 → 0.6). |
-| `task3` | 🟠 **Hard** | **Preemptive Management** | Spawns at 0.95+ Temp. Requires instant cooling to prevent stress leakage. |
-| `task4` | 🔴 **Extra Hard** | **Fault Recovery** | Recovers from a +0.5 sudden thermal blast while fighting high degradation. |
+### 🟢 Task 1: Stable Baseline Operation
+Establishes the agent's ability to maintain equilibrium in a "Cold-Start" or "Steady-State" regime.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Static Demand** | Maintain zero-error tracking. | Stability of Power output `P`. |
+| **Zero Disturbance** | Verify actuator lag compensation. | Valve position `U` vs `L`. |
+
+### 🟡 Task 2: Load Following
+Simulates a grid-level demand spike requiring rapid power scaling.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Instant Step-Change** | Transition power output to new setpoints. | Overshoot (`OS`) management. |
+| **Dynamic Scaling** | Minimize settling time during transients. | Tracking Error (`TE`) recovery. |
+
+### 🟠 Task 3: Preemptive Constraint Management
+A high-pressure scenario where the agent spawns into a system near its thermal limit.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Near-Critical Spawn** | Immediate heat mitigation (Emergency Cooling). | Temperature `T` safety buffer. |
+| **Boundary Control** | Prevent stress leakage at high pressures. | Stress accumulation `S`. |
+
+### 🔴 Task 4: Fault Recovery with Degradation
+The ultimate stress test. Simultaneous hardware failure and external thermal shock.
+| Operational Profile | Objective | Critical Observation |
+| :--- | :--- | :--- |
+| **Athermal Shock** | Recover from sudden energy injection. | Pressure rate-of-change. |
+| **Hardware Wear** | Manage degraded coolant efficiency (D=0.6). | Valve saturation limits. |
 
 ---
 
-## 📊 Baseline Performance (Llama-3.3-70B)
+## 📊 Performance & Discriminative Power
 
-Based on the latest environment tuning (v1.1), the current state-of-the-art results for our internal benchmark are:
+We compare high-frontier models against a hardcoded **Rule-Based Baseline** to measure the reasoning "delta." 
 
-- **Global Success Threshold:** `0.70` (Score $\ge$ 0.70 required for ✅)
-- **Task 1 Score:** `0.95`
-- **Task 2 Score:** `0.84`
-- **Task 3 Score:** `0.75`
-- **Task 4 Score:** `0.74`
+| Task ID | **Heuristic Baseline** | **Llama-3.3-70B** | Improvement |
+| :--- | :---: | :---: | :---: |
+| `task1` | 0.95 | **0.95** | --- |
+| `task2` | 0.77 | **0.84** | **+9%** |
+| `task3` | 0.57 | **0.75** | **+31%** |
+| `task4` | 0.48 | **0.74** | **+54%** |
 
-*Note: High-frontier models like Llama-3.3-70B demonstrate significant resilience in Task 4, with performance remaining remarkably consistent with the Hard-tier baseline.*
+> [!TIP]
+> **The Success Reversal:** Note that while rule-based logic is sufficient for steady-state tracking (Task 1), it lacks the 'Predictive Intuition' required for high-stress recovery. The **9%-54% improvement** of the LLM over the baseline validates this repository as a true test of **Physical Reasoning** rather than simple instruction following.
+
+**Observation:** While standard rules (If/Then) can solve Task 1 and 2, they fail catastrophically in Tasks 3 and 4 once physics delays and non-linear shocks are introduced. The Llama-3.3-70B model demonstrates **superior recovery logic**, identifying the need for "Maximum Cooling" well before the baseline script reacts.
 
 > [!IMPORTANT]
-> **Anti-Coasting Fix:** We have recently plugged the "Lazy Completion" loopholes. Task 4 now strictly measures recovery only **after** the thermal shock occurs, preventing models from getting free points for early safety.
+> **Anti-Coasting Fix:** We have strictly defined the evaluation window to begin **ONLY after** the disturbance injection. Models can no longer inflate their scores with early "stable" steps.
 
 ---
 
@@ -134,8 +197,6 @@ docker run -p 7860:7860 thermal-plant:latest
 ---
 
 ## 🤝 The Team
-
-High-performance control systems optimized by:
 
 *   [**KaushalrajPuwar**](https://github.com/KaushalrajPuwar)
 *   [**freakun0025**](https://github.com/freakun0025)

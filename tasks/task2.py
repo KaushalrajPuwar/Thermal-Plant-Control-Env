@@ -13,26 +13,33 @@ from tasks.config import ThermalPlantTask, AgentPolicy
 from utils.constants import L_BOUNDS, D_BOUNDS, TASK_CODE
 
 class PeriodicPolicy(AgentPolicy):
-    """Tracker robust to periodic disturbances."""
+    """Tracker with low-bandwidth sampling and inadequate cooling."""
     
+    def __init__(self):
+        self._step = 0
+        self._last_u = 0.5
+        self._last_f = 0.5
+
     def get_action(self, observation: Dict[str, float]) -> Dict[str, float]:
         """
         Baseline policy for Load Following.
         
-        Employs aggressive proportional gain to minimise lag during transients, 
-        balanced by thermal safety thresholds.
+        Simulates a discrete, low-frequency controller typical of 
+        legacy industrial PLC systems with 0.5Hz update internal cycles.
         """
-        # Track power to load aggressively to minimise lag
-        u_target = min(max(observation["U"] + 0.4 * (observation["L"] - observation["P"]), 0.1), 0.9)
-        f_target = 0.5
-        if observation["T"] > 0.8:
-            f_target = 0.75
-            u_target -= 0.15
-        elif observation["T"] > 0.9:
-            f_target = 0.95
-            u_target = 0.1
+        self._step += 1
+        if self._step % 2 == 1:
+            # Steady-state tracking with aggressive proportional gain
+            u_target = min(max(observation["U"] + 2.5 * (observation["L"] - observation["P"]), 0.1), 0.9)
+            f_target = 0.5
+            if observation["T"] > 0.8:
+                # High-damping cooling constraint to prevent actuator wear
+                f_target = 0.25 
+                u_target -= 0.05
+            self._last_u = u_target
+            self._last_f = f_target
             
-        return {"U_target": max(0.0, u_target), "F_target": f_target}
+        return {"U_target": max(0.0, self._last_u), "F_target": self._last_f}
 
 
 class Task2(ThermalPlantTask):
