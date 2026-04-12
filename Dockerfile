@@ -11,6 +11,9 @@ COPY . /app
 # Using --no-cache-dir to reduce image size
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install the project itself so entry points (tasks/graders) are registered
+RUN pip install --no-cache-dir .
+
 # Make port 7860 available to the world outside this container
 EXPOSE 7860
 
